@@ -2,55 +2,48 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swagger");
-
-// Audit logging - Issue #32
-const auditLoggerService = require('./services/auditLogger.service');
-const { evidenceAuditMiddleware, logEvidenceAction } = require('./middlewares/auditLogger.middleware');
-const auditLogsRoutes = require('./routes/auditLogs.routes');
-
-// Auth routes
-const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Supabase configuration
-const supabaseUrl = process.env.SUPABASE_URL || 'https://vkqswulxmuuganmjqumb.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrcXN3dWx4bXV1Z2FubWpxdW1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3ODc3OTQsImV4cCI6MjA4MjM2Mzc5NH0.LsZKX2aThok0APCNXr9yQ8FnuJnIw6v8RsTIxVLFB4U';
+ Supabase configuration
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing required environment variables: SUPABASE_URL and SUPABASE_KEY');
+    process.exit(1);
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Middleware
+ Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-
-// Rate limiting
+ Rate limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,  15 minutes
+    max: 100  limit each IP to 100 requests per windowMs
 });
 app.use('/api/', limiter);
 
-// Admin rate limiting (stricter)
+ Admin rate limiting (stricter)
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 50
 });
 
-// Validation helpers
+ Validation helpers
 const validateWalletAddress = (address) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
 };
 
 const allowedRoles = ['public_viewer', 'investigator', 'forensic_analyst', 'legal_professional', 'court_official', 'evidence_manager', 'auditor', 'admin'];
 
-// Middleware to verify admin permissions
+ Middleware to verify admin permissions
 const verifyAdmin = async (req, res, next) => {
     try {
         const { adminWallet } = req.body;
@@ -79,7 +72,7 @@ const verifyAdmin = async (req, res, next) => {
     }
 };
 
-// Log admin actions
+ Log admin actions
 const logAdminAction = async (adminWallet, actionType, targetWallet, details) => {
     try {
         await supabase
@@ -95,18 +88,18 @@ const logAdminAction = async (adminWallet, actionType, targetWallet, details) =>
     }
 };
 
-// Case Access Control Middleware
+ Case Access Control Middleware
 const checkCasePermission = async (req, res, next) => {
     try {
         const { caseId } = req.params;
-        const { action } = req.query; // view, edit, approve, delete
+        const { action } = req.query;  view, edit, approve, delete
         const userWallet = req.headers['x-user-wallet'];
 
         if (!userWallet || !validateWalletAddress(userWallet)) {
             return res.status(401).json({ error: 'Invalid user wallet' });
         }
 
-        // Get user info
+         Get user info
         const { data: user } = await supabase
             .from('users')
             .select('*')
@@ -118,7 +111,7 @@ const checkCasePermission = async (req, res, next) => {
             return res.status(401).json({ error: 'User not found or inactive' });
         }
 
-        // Admin and auditor have special permissions
+         Admin and auditor have special permissions
         if (user.role === 'admin') {
             req.user = user;
             return next();
@@ -132,7 +125,7 @@ const checkCasePermission = async (req, res, next) => {
             return res.status(403).json({ error: 'Auditors have read-only access' });
         }
 
-        // Get case info
+         Get case info
         const { data: caseData } = await supabase
             .from('cases')
             .select('*')
@@ -143,7 +136,7 @@ const checkCasePermission = async (req, res, next) => {
             return res.status(404).json({ error: 'Case not found' });
         }
 
-        // Check permission matrix
+         Check permission matrix
         const { data: permission } = await supabase
             .from('role_case_permissions')
             .select('*')
@@ -155,7 +148,7 @@ const checkCasePermission = async (req, res, next) => {
             return res.status(403).json({ error: 'No permission defined for this role and case status' });
         }
 
-        // Check basic permission
+         Check basic permission
         let hasPermission = false;
         switch (action) {
             case 'view':
@@ -175,7 +168,7 @@ const checkCasePermission = async (req, res, next) => {
             return res.status(403).json({ error: 'Insufficient permissions for this action' });
         }
 
-        // Check assignment requirement
+         Check assignment requirement
         if (permission.requires_assignment) {
             let assignedUserId = null;
             switch (user.role) {
@@ -198,7 +191,7 @@ const checkCasePermission = async (req, res, next) => {
             }
         }
 
-        // Check ownership for investigators
+         Check ownership for investigators
         if (user.role === 'investigator' && caseData.investigator_id !== user.id) {
             return res.status(403).json({ error: 'You can only access your own cases' });
         }
@@ -212,32 +205,13 @@ const checkCasePermission = async (req, res, next) => {
     }
 };
 
-// API Routes
-app.use("/api/auth", authRoutes);
-
-// Audit Logs API Routes - Issue #32 (Admin/Auditor access only)
-app.use("/api/audit-logs", auditLogsRoutes);
-
-// Apply audit middleware to evidence endpoints
-app.use('/api/cases/:caseId/evidence', evidenceAuditMiddleware);
-
-// Health check
-/**
- * @swagger
- * /api/health:
- *   get:
- *     summary: API health check
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: Server is running
- */
-
+ API Routes
+ Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Get user by wallet address
+ Get user by wallet address
 /**
  * @swagger
  * /api/user/{wallet}:
@@ -288,7 +262,7 @@ app.get('/api/user/:wallet', async (req, res) => {
     }
 });
 
-// Create regular user (Admin only)
+ Create regular user (Admin only)
 /**
  * @swagger
  * /api/admin/create-user:
@@ -319,7 +293,7 @@ app.post('/api/admin/create-user', adminLimiter, verifyAdmin, async (req, res) =
         const { adminWallet, userData } = req.body;
         const { walletAddress, fullName, role, department, jurisdiction, badgeNumber } = userData;
 
-        // Validate input
+         Validate input
         if (!validateWalletAddress(walletAddress)) {
             return res.status(400).json({ error: 'Invalid wallet address format' });
         }
@@ -332,7 +306,7 @@ app.post('/api/admin/create-user', adminLimiter, verifyAdmin, async (req, res) =
             return res.status(400).json({ error: 'Invalid role for regular user' });
         }
 
-        // Check if wallet already exists
+         Check if wallet already exists
         const { data: existingUser } = await supabase
             .from('users')
             .select('wallet_address')
@@ -343,7 +317,7 @@ app.post('/api/admin/create-user', adminLimiter, verifyAdmin, async (req, res) =
             return res.status(409).json({ error: 'Wallet address already registered' });
         }
 
-        // Create user
+         Create user
         const { data: newUser, error } = await supabase
             .from('users')
             .insert({
@@ -364,7 +338,7 @@ app.post('/api/admin/create-user', adminLimiter, verifyAdmin, async (req, res) =
             throw error;
         }
 
-        // Log admin action
+         Log admin action
         await logAdminAction(adminWallet, 'create_user', walletAddress, {
             user_name: fullName,
             user_role: role,
@@ -378,7 +352,7 @@ app.post('/api/admin/create-user', adminLimiter, verifyAdmin, async (req, res) =
     }
 });
 
-// Create admin user (Admin only)
+ Create admin user (Admin only)
 /**
  * @swagger
  * /api/admin/create-admin:
@@ -397,7 +371,7 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
         const { adminWallet, adminData } = req.body;
         const { walletAddress, fullName } = adminData;
 
-        // Validate input
+         Validate input
         if (!validateWalletAddress(walletAddress)) {
             return res.status(400).json({ error: 'Invalid wallet address format' });
         }
@@ -406,7 +380,7 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
             return res.status(400).json({ error: 'Full name is required' });
         }
 
-        // Check admin limit
+         Check admin limit
         const { count } = await supabase
             .from('users')
             .select('*', { count: 'exact', head: true })
@@ -417,7 +391,7 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
             return res.status(400).json({ error: 'Maximum admin limit (10) reached' });
         }
 
-        // Check if wallet already exists
+         Check if wallet already exists
         const { data: existingUser } = await supabase
             .from('users')
             .select('wallet_address')
@@ -428,7 +402,7 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
             return res.status(409).json({ error: 'Wallet address already registered' });
         }
 
-        // Create admin
+         Create admin
         const { data: newAdmin, error } = await supabase
             .from('users')
             .insert({
@@ -448,7 +422,7 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
             throw error;
         }
 
-        // Log admin action
+         Log admin action
         await logAdminAction(adminWallet, 'create_admin', walletAddress, {
             admin_name: fullName
         });
@@ -460,7 +434,7 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
     }
 });
 
-// Delete user (Admin only)
+ Delete user (Admin only)
 /**
  * @swagger
  * /api/admin/delete-user:
@@ -484,12 +458,12 @@ app.post('/api/admin/delete-user', adminLimiter, verifyAdmin, async (req, res) =
             return res.status(400).json({ error: 'Invalid target wallet address' });
         }
 
-        // Prevent self-deletion
+         Prevent self-deletion
         if (adminWallet === targetWallet) {
             return res.status(400).json({ error: 'Administrators cannot delete their own account' });
         }
 
-        // Get target user info for logging
+         Get target user info for logging
         const { data: targetUser } = await supabase
             .from('users')
             .select('*')
@@ -500,7 +474,7 @@ app.post('/api/admin/delete-user', adminLimiter, verifyAdmin, async (req, res) =
             return res.status(404).json({ error: 'Target user not found' });
         }
 
-        // Soft delete user
+         Soft delete user
         const { error } = await supabase
             .from('users')
             .update({
@@ -513,7 +487,7 @@ app.post('/api/admin/delete-user', adminLimiter, verifyAdmin, async (req, res) =
             throw error;
         }
 
-        // Log admin action
+         Log admin action
         await logAdminAction(adminWallet, 'delete_user', targetWallet, {
             action: 'soft_delete',
             target_user_name: targetUser.full_name,
@@ -527,7 +501,7 @@ app.post('/api/admin/delete-user', adminLimiter, verifyAdmin, async (req, res) =
     }
 });
 
-// Get all users (Admin only)
+ Get all users (Admin only)
 /**
  * @swagger
  * /api/admin/users:
@@ -559,16 +533,16 @@ app.post('/api/admin/users', adminLimiter, verifyAdmin, async (req, res) => {
     }
 });
 
-// Prevent user self-deletion
+ Prevent user self-deletion
 app.post('/api/user/delete-self', (req, res) => {
     res.status(403).json({
         error: 'Users cannot delete their own accounts. Contact administrator.'
     });
 });
 
-// Case Management APIs
+ Case Management APIs
 
-// Get cases visible to user based on role and permissions
+ Get cases visible to user based on role and permissions
 /**
  * @swagger
  * /api/cases:
@@ -590,7 +564,7 @@ app.get('/api/cases', async (req, res) => {
             return res.status(401).json({ error: 'Invalid user wallet' });
         }
 
-        // Get user info
+         Get user info
         const { data: user } = await supabase
             .from('users')
             .select('*')
@@ -611,27 +585,27 @@ app.get('/api/cases', async (req, res) => {
             assigned_court_official:assigned_court_official_id(full_name)
         `);
 
-        // Filter cases based on role
+         Filter cases based on role
         if (user.role === 'public_viewer') {
-            // Only closed public cases
+             Only closed public cases
             query = query.eq('status', 'CLOSED').eq('is_public', true);
         } else if (user.role === 'investigator') {
-            // Only cases where user is the investigator
+             Only cases where user is the investigator
             query = query.eq('investigator_id', user.id);
         } else if (user.role === 'forensic_analyst') {
-            // Cases assigned to this analyst
+             Cases assigned to this analyst
             query = query.eq('assigned_analyst_id', user.id);
         } else if (user.role === 'legal_professional') {
-            // Cases assigned to this legal professional
+             Cases assigned to this legal professional
             query = query.eq('assigned_legal_pro_id', user.id);
         } else if (user.role === 'court_official') {
-            // Cases assigned to this court official
+             Cases assigned to this court official
             query = query.eq('assigned_court_official_id', user.id);
         } else if (user.role === 'evidence_manager') {
-            // Cases assigned to this evidence manager
+             Cases assigned to this evidence manager
             query = query.eq('assigned_evidence_manager_id', user.id);
         }
-        // Admin and auditor can see all cases
+         Admin and auditor can see all cases
 
         const { data: cases, error } = await query.order('created_at', { ascending: false });
 
@@ -646,7 +620,7 @@ app.get('/api/cases', async (req, res) => {
     }
 });
 
-// Get specific case details
+ Get specific case details
 /**
  * @swagger
  * /api/cases/{caseId}:
@@ -693,7 +667,7 @@ app.get('/api/cases/:caseId', checkCasePermission, async (req, res) => {
     }
 });
 
-// Create new case (Investigators only)
+ Create new case (Investigators only)
 /**
  * @swagger
  * /api/cases:
@@ -734,7 +708,7 @@ app.post('/api/cases', async (req, res) => {
             return res.status(401).json({ error: 'Invalid user wallet' });
         }
 
-        // Get user info
+         Get user info
         const { data: user } = await supabase
             .from('users')
             .select('*')
@@ -754,7 +728,7 @@ app.post('/api/cases', async (req, res) => {
             return res.status(400).json({ error: 'Case title is required' });
         }
 
-        // Generate case ID
+         Generate case ID
         const caseId = `CASE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
         const { data: newCase, error } = await supabase
@@ -784,7 +758,7 @@ app.post('/api/cases', async (req, res) => {
     }
 });
 
-// Update case status (Role-based permissions)
+ Update case status (Role-based permissions)
 /**
  * @swagger
  * /api/cases/{caseId}/status:
@@ -807,7 +781,7 @@ app.put('/api/cases/:caseId/status', checkCasePermission, async (req, res) => {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        // Check if user can change status to this value
+         Check if user can change status to this value
         const { data: permission } = await supabase
             .from('role_case_permissions')
             .select('*')
@@ -833,7 +807,7 @@ app.put('/api/cases/:caseId/status', checkCasePermission, async (req, res) => {
             throw error;
         }
 
-        // Log the status change
+         Log the status change
         await supabase
             .from('audit_logs')
             .insert({
@@ -852,7 +826,7 @@ app.put('/api/cases/:caseId/status', checkCasePermission, async (req, res) => {
     }
 });
 
-// Assign case to role (Permission-based)
+ Assign case to role (Permission-based)
 /**
  * @swagger
  * /api/cases/{caseId}/assign:
@@ -869,7 +843,7 @@ app.post('/api/cases/:caseId/assign', checkCasePermission, async (req, res) => {
         const { role, userId } = req.body;
         const user = req.user;
 
-        // Check if user can delegate
+         Check if user can delegate
         const { data: permission } = await supabase
             .from('role_case_permissions')
             .select('*')
@@ -881,7 +855,7 @@ app.post('/api/cases/:caseId/assign', checkCasePermission, async (req, res) => {
             return res.status(403).json({ error: 'Cannot assign cases' });
         }
 
-        // Get target user
+         Get target user
         const { data: targetUser } = await supabase
             .from('users')
             .select('*')
@@ -894,7 +868,7 @@ app.post('/api/cases/:caseId/assign', checkCasePermission, async (req, res) => {
             return res.status(404).json({ error: 'Target user not found' });
         }
 
-        // Update case assignment
+         Update case assignment
         let updateData = {};
         switch (role) {
             case 'forensic_analyst':
@@ -924,7 +898,7 @@ app.post('/api/cases/:caseId/assign', checkCasePermission, async (req, res) => {
             throw error;
         }
 
-        // Create assignment record
+         Create assignment record
         await supabase
             .from('case_assignments')
             .insert({
@@ -934,7 +908,7 @@ app.post('/api/cases/:caseId/assign', checkCasePermission, async (req, res) => {
                 status: 'ACTIVE'
             });
 
-        // Log assignment
+         Log assignment
         await supabase
             .from('audit_logs')
             .insert({
@@ -952,9 +926,9 @@ app.post('/api/cases/:caseId/assign', checkCasePermission, async (req, res) => {
     }
 });
 
-// Evidence Management APIs
+ Evidence Management APIs
 
-// Get evidence for a case
+ Get evidence for a case
 /**
  * @swagger
  * /api/cases/{caseId}/evidence:
@@ -981,39 +955,7 @@ app.get('/api/cases/:caseId/evidence', checkCasePermission, async (req, res) => 
             .order('created_at', { ascending: false });
 
         if (error) {
-            // Log failed access attempt - Issue #32
-            await auditLoggerService.logAction({
-                actionType: auditLoggerService.ACTION_TYPES.ACCESS,
-                evidenceId: null,
-                userId: user?.wallet_address || user?.id || req.headers['x-user-wallet'],
-                userRole: user?.role || 'unknown',
-                status: auditLoggerService.ACTION_STATUS.FAILURE,
-                details: {
-                    error: error.message,
-                    evidenceCount: 0
-                },
-                ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress,
-                caseId: caseId
-            });
             throw error;
-        }
-
-        // Log evidence access - Issue #32
-        // Note: This logs bulk access; individual evidence access should be logged separately
-        if (evidence && evidence.length > 0) {
-            await auditLoggerService.logAction({
-                actionType: auditLoggerService.ACTION_TYPES.ACCESS,
-                evidenceId: evidence.map(e => e.evidence_id).join(','), // Multiple evidence IDs
-                userId: user?.wallet_address || user?.id || req.headers['x-user-wallet'],
-                userRole: user?.role || 'unknown',
-                status: auditLoggerService.ACTION_STATUS.SUCCESS,
-                details: {
-                    evidenceCount: evidence.length,
-                    accessType: 'LIST_VIEW'
-                },
-                ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress,
-                caseId: caseId
-            });
         }
 
         res.json({ evidence: evidence || [] });
@@ -1023,7 +965,7 @@ app.get('/api/cases/:caseId/evidence', checkCasePermission, async (req, res) => 
     }
 });
 
-// Upload evidence
+ Upload evidence
 /** 
  * @swagger
  * /api/cases/{caseId}/evidence:
@@ -1040,7 +982,7 @@ app.post('/api/cases/:caseId/evidence', checkCasePermission, async (req, res) =>
         const { title, description, evidenceType, fileHash, blockchainTxHash } = req.body;
         const user = req.user;
 
-        // Generate evidence ID
+         Generate evidence ID
         const evidenceId = `EVID-${caseId.split('-').pop()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
 
         const { data: newEvidence, error } = await supabase
@@ -1060,45 +1002,10 @@ app.post('/api/cases/:caseId/evidence', checkCasePermission, async (req, res) =>
             .single();
 
         if (error) {
-            // Log failed upload attempt - Issue #32
-            await auditLoggerService.logAction({
-                actionType: auditLoggerService.ACTION_TYPES.CREATE,
-                evidenceId: null,
-                userId: user.wallet_address || user.id,
-                userRole: user.role,
-                status: auditLoggerService.ACTION_STATUS.FAILURE,
-                details: {
-                    title,
-                    evidenceType,
-                    error: error.message,
-                    fileHash
-                },
-                ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress,
-                caseId: caseId
-            });
             throw error;
         }
 
-        // Log successful evidence upload using centralized audit logger - Issue #32
-        await auditLoggerService.logAction({
-            actionType: auditLoggerService.ACTION_TYPES.CREATE,
-            evidenceId: evidenceId,
-            userId: user.wallet_address || user.id,
-            userRole: user.role,
-            status: auditLoggerService.ACTION_STATUS.SUCCESS,
-            details: {
-                title,
-                description: description?.substring(0, 200), // Truncate for logging
-                evidenceType,
-                fileHash,
-                blockchainTxHash,
-                internalId: newEvidence.id
-            },
-            ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress,
-            caseId: caseId
-        });
-
-        // Also log to legacy audit_logs table for backward compatibility
+         Log successful evidence upload
         await supabase
             .from('audit_logs')
             .insert({
@@ -1116,7 +1023,7 @@ app.post('/api/cases/:caseId/evidence', checkCasePermission, async (req, res) =>
     }
 });
 
-// Get dashboard statistics for user
+ Get dashboard statistics for user
 /**
  * @swagger
  * /api/dashboard/stats:
@@ -1135,7 +1042,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
             return res.status(401).json({ error: 'Invalid user wallet' });
         }
 
-        // Get user info
+         Get user info
         const { data: user } = await supabase
             .from('users')
             .select('*')
@@ -1149,7 +1056,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
 
         let stats = {};
 
-        // Get case counts based on role
+         Get case counts based on role
         if (user.role === 'investigator') {
             const { count: activeCases } = await supabase
                 .from('cases')
@@ -1208,27 +1115,27 @@ app.get('/api/dashboard/stats', async (req, res) => {
     }
 });
 
-// Block unauthorized admin operations
+ Block unauthorized admin operations
 app.post('/api/admin/*', (req, res) => {
     res.status(403).json({
         error: 'Forbidden: Administrator privileges required'
     });
 });
 
-// Error handling middleware
+ Error handling middleware
 app.use((error, req, res, next) => {
     console.error('Unhandled error:', error);
     res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
+ 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
 });
 
 app.listen(PORT, () => {
     console.log(`🔐 EVID-DGC API Server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`📊 Health check: http:localhost:${PORT}/api/health`);
 });
 
 module.exports = app;

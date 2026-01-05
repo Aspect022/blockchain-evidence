@@ -191,57 +191,6 @@ class Storage {
     }
 
     /**
-     * Get all users from database (Admin function)
-     * Retrieves all user records ordered by creation date (newest first)
-     * @async
-     * @method getAllUsers
-     * @returns {Promise<Array>} Array of user objects, empty array if error
-     */
-    async getAllUsers() {
-        try {
-            const response = await fetch(`${this.apiUrl}/users?order=created_at.desc`, {
-                headers: this.headers
-            });
-            return response.ok ? await response.json() : [];
-        } catch (error) {
-            console.error('Error getting all users:', error);
-            return [];
-        }
-    }
-
-    async createRegularUser(adminWallet, userData) {
-        try {
-            const response = await fetch(`${this.apiUrl}/users`, {
-                method: 'POST',
-                headers: this.headers,
-                body: JSON.stringify({
-                    wallet_address: userData.walletAddress,
-                    full_name: userData.fullName,
-                    role: userData.role,
-                    department: userData.department || 'General',
-                    jurisdiction: userData.jurisdiction || 'General',
-                    badge_number: userData.badgeNumber || '',
-                    account_type: 'real',
-                    created_by: adminWallet,
-                    is_active: true
-                })
-            });
-
-            if (response.ok) {
-                await this.logAdminAction(adminWallet, 'create_user', userData.walletAddress, {
-                    user_name: userData.fullName,
-                    role: userData.role
-                });
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('Error creating user:', error);
-            throw error;
-        }
-    }
-
-    /**
      * Create a new administrator account (Admin-Only operation)
      * Allows existing administrators to create new admin accounts with limits and validation
      * @async
