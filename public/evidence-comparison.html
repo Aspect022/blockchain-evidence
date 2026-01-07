@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evidence Comparison Tool - EVID-DGC</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="evidence-comparison.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+
+<body>
+    <div class="comparison-container">
+        <!-- Header -->
+        <header class="comparison-header">
+            <div class="header-content">
+                <h1>🔍 Evidence Comparison Tool</h1>
+                <p>Forensic-grade side-by-side evidence analysis with blockchain verification</p>
+            </div>
+            <div class="header-actions">
+                <button id="exportPdfBtn" class="btn btn-primary" disabled>
+                    📄 Export Report
+                </button>
+                <button id="backBtn" class="btn btn-secondary">
+                    ← Back to Dashboard
+                </button>
+            </div>
+        </header>
+
+        <!-- Evidence Selector -->
+        <section class="evidence-selector">
+            <h2>Select Evidence to Compare (2-4 items)</h2>
+            <div class="selector-controls">
+                <div class="search-box">
+                    <input type="text" id="evidenceSearch" placeholder="Search evidence by title, case ID, or hash...">
+                    <button id="searchBtn" class="btn btn-icon">🔍</button>
+                </div>
+                <div class="layout-selector">
+                    <label>Layout:</label>
+                    <select id="layoutMode">
+                        <option value="grid-2">2 Column Grid</option>
+                        <option value="grid-3">3 Column Grid</option>
+                        <option value="grid-4">4 Column Grid</option>
+                        <option value="split">Split View</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="evidenceList" class="evidence-list">
+                <!-- Evidence items will be loaded here -->
+            </div>
+
+            <div class="selected-evidence">
+                <h3>Selected Evidence (<span id="selectedCount">0</span>/4)</h3>
+                <div id="selectedItems" class="selected-items">
+                    <!-- Selected items will appear here -->
+                </div>
+                <button id="compareBtn" class="btn btn-primary btn-large" disabled>
+                    Compare Selected Evidence
+                </button>
+            </div>
+        </section>
+
+        <!-- Comparison View -->
+        <section id="comparisonView" class="comparison-view" style="display: none;">
+            <div class="comparison-controls">
+                <button id="syncScrollBtn" class="btn btn-secondary">
+                    🔗 Sync Scrolling: ON
+                </button>
+                <button id="showMetadataBtn" class="btn btn-secondary">
+                    📊 Show Metadata
+                </button>
+                <button id="resetViewBtn" class="btn btn-secondary">
+                    🔄 Reset View
+                </button>
+                <button id="changeSelectionBtn" class="btn btn-secondary">
+                    ← Change Selection
+                </button>
+            </div>
+
+            <!-- Metadata Comparison Table -->
+            <div id="metadataSection" class="metadata-section">
+                <h3>📊 Metadata Comparison</h3>
+                <div class="metadata-table-container">
+                    <table id="metadataTable" class="metadata-table">
+                        <thead>
+                            <tr>
+                                <th>Property</th>
+                                <!-- Evidence columns will be added dynamically -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Metadata rows will be added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Evidence Panels -->
+            <div id="evidencePanels" class="evidence-panels">
+                <!-- Evidence panels will be created dynamically -->
+            </div>
+        </section>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Loading evidence...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="storage.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="evidence-comparison.js"></script>
+</body>
+
+</html>
