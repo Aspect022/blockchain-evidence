@@ -3,8 +3,17 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 const PORT = process.env.PORT || 3001;
 
 // Supabase configuration
@@ -17,6 +26,91 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Store connected users for real-time notifications
+const connectedUsers = new Map();
+
+// WebSocket connection handling
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    socket.on('join', (walletAddress) => {
+        if (validateWalletAddress(walletAddress)) {
+            connectedUsers.set(walletAddress, socket.id);
+            socket.join(walletAddress);
+            console.log(`User ${walletAddress} joined notifications`);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        // Remove user from connected users
+        for (const [wallet, socketId] of connectedUsers.entries()) {
+            if (socketId === socket.id) {
+                connectedUsers.delete(wallet);
+                break;
+            }
+        }
+        console.log('User disconnected:', socket.id);
+    });
+});
+
+// Notification helper functions
+const createNotification = async (userWallet, title, message, type, data = {}) => {
+    try {
+        const { data: notification, error } = await supabase
+            .from('notifications')
+            .insert({
+                user_wallet: userWallet,
+                title,
+                message,
+                type,
+                data
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Send real-time notification if user is connected
+        if (connectedUsers.has(userWallet)) {
+            io.to(userWallet).emit('notification', notification);
+        }
+
+        return notification;
+    } catch (error) {
+        console.error('Error creating notification:', error);
+    }
+};
+
+const notifyMultipleUsers = async (userWallets, title, message, type, data = {}) => {
+    const notifications = userWallets.map(wallet => ({
+        user_wallet: wallet,
+        title,
+        message,
+        type,
+        data
+    }));
+
+    try {
+        const { data: createdNotifications, error } = await supabase
+            .from('notifications')
+            .insert(notifications)
+            .select();
+
+        if (error) throw error;
+
+        // Send real-time notifications
+        createdNotifications.forEach(notification => {
+            if (connectedUsers.has(notification.user_wallet)) {
+                io.to(notification.user_wallet).emit('notification', notification);
+            }
+        });
+
+        return createdNotifications;
+    } catch (error) {
+        console.error('Error creating multiple notifications:', error);
+    }
+};
 
 // Middleware
 app.use(cors());
@@ -92,6 +186,112 @@ const logAdminAction = async (adminWallet, actionType, targetWallet, details) =>
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Notification API endpoints
+// Get user notifications
+app.get('/api/notifications/:wallet', async (req, res) => {
+    try {
+        const { wallet } = req.params;
+        const { limit = 50, offset = 0, unread_only = false } = req.query;
+
+        if (!validateWalletAddress(wallet)) {
+            return res.status(400).json({ error: 'Invalid wallet address' });
+        }
+
+        let query = supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_wallet', wallet)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (unread_only === 'true') {
+            query = query.eq('is_read', false);
+        }
+
+        const { data: notifications, error } = await query;
+
+        if (error) throw error;
+
+        // Get unread count
+        const { count: unreadCount } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_wallet', wallet)
+            .eq('is_read', false);
+
+        res.json({ notifications, unreadCount });
+    } catch (error) {
+        console.error('Get notifications error:', error);
+        res.status(500).json({ error: 'Failed to get notifications' });
+    }
+});
+
+// Mark notification as read
+app.post('/api/notifications/:id/read', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userWallet } = req.body;
+
+        if (!validateWalletAddress(userWallet)) {
+            return res.status(400).json({ error: 'Invalid wallet address' });
+        }
+
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', id)
+            .eq('user_wallet', userWallet);
+
+        if (error) throw error;
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Mark notification read error:', error);
+        res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+});
+
+// Mark all notifications as read
+app.post('/api/notifications/read-all', async (req, res) => {
+    try {
+        const { userWallet } = req.body;
+
+        if (!validateWalletAddress(userWallet)) {
+            return res.status(400).json({ error: 'Invalid wallet address' });
+        }
+
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_wallet', userWallet)
+            .eq('is_read', false);
+
+        if (error) throw error;
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Mark all notifications read error:', error);
+        res.status(500).json({ error: 'Failed to mark all notifications as read' });
+    }
+});
+
+// Create notification (for testing)
+app.post('/api/notifications/create', async (req, res) => {
+    try {
+        const { userWallet, title, message, type, data } = req.body;
+
+        if (!validateWalletAddress(userWallet)) {
+            return res.status(400).json({ error: 'Invalid wallet address' });
+        }
+
+        const notification = await createNotification(userWallet, title, message, type, data);
+        res.json({ success: true, notification });
+    } catch (error) {
+        console.error('Create notification error:', error);
+        res.status(500).json({ error: 'Failed to create notification' });
+    }
 });
 
 // Get user by wallet address
@@ -179,6 +379,24 @@ app.post('/api/admin/create-user', adminLimiter, verifyAdmin, async (req, res) =
             department: department
         });
 
+        // Send welcome notification to new user
+        await createNotification(
+            walletAddress,
+            'Welcome to EVID-DGC',
+            `Your ${role} account has been created successfully. You can now access the system.`,
+            'system',
+            { role, department }
+        );
+
+        // Notify admin of successful user creation
+        await createNotification(
+            adminWallet,
+            'User Created Successfully',
+            `New ${role} account created for ${fullName}`,
+            'system',
+            { action: 'user_created', targetUser: fullName, role }
+        );
+
         res.json({ success: true, user: newUser });
     } catch (error) {
         console.error('Create user error:', error);
@@ -247,6 +465,24 @@ app.post('/api/admin/create-admin', adminLimiter, verifyAdmin, async (req, res) 
         await logAdminAction(adminWallet, 'create_admin', walletAddress, {
             admin_name: fullName
         });
+
+        // Send welcome notification to new admin
+        await createNotification(
+            walletAddress,
+            'Admin Access Granted',
+            `Your administrator account has been created. You now have full system access.`,
+            'system',
+            { role: 'admin' }
+        );
+
+        // Notify creating admin
+        await createNotification(
+            adminWallet,
+            'New Administrator Created',
+            `Administrator account created for ${fullName}`,
+            'system',
+            { action: 'admin_created', targetAdmin: fullName }
+        );
 
         res.json({ success: true, admin: newAdmin });
     } catch (error) {
@@ -483,9 +719,10 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`🔐 EVID-DGC API Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔔 WebSocket notifications enabled`);
 });
 
 module.exports = app;

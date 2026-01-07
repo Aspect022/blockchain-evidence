@@ -7,8 +7,10 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="config.js"></script>
     <script src="storage.js"></script>
+    <script src="notifications.js"></script>
     <script src="indian-apis.js"></script>
 </head>
 <body>
@@ -231,6 +233,13 @@
             await loadAllUsers();
             await loadRoleTestingDashboard();
             initializeEventListeners();
+            
+            // Connect to notifications
+            if (currentAdmin && window.notificationManager) {
+                const adminWallet = currentAdmin.startsWith('email_') ? 
+                    '0x29bb7718d5c6da6e787deae8fd6bb3459e8539f2' : currentAdmin;
+                window.notificationManager.connect(adminWallet);
+            }
         });
 
         async function createDefaultTestAccounts() {

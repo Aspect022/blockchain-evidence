@@ -64,12 +64,26 @@ CREATE TABLE IF NOT EXISTS admin_actions (
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_wallet TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('evidence_upload', 'evidence_verification', 'evidence_assignment', 'comment', 'mention', 'system', 'urgent')),
+    data JSONB,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days')
+);
+
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE evidence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all for demo)
 DROP POLICY IF EXISTS "Allow all operations" ON users;
@@ -77,12 +91,14 @@ DROP POLICY IF EXISTS "Allow all operations" ON evidence;
 DROP POLICY IF EXISTS "Allow all operations" ON cases;
 DROP POLICY IF EXISTS "Allow all operations" ON activity_logs;
 DROP POLICY IF EXISTS "Allow all operations" ON admin_actions;
+DROP POLICY IF EXISTS "Allow all operations" ON notifications;
 
 CREATE POLICY "Allow all operations" ON users FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON evidence FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON cases FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON activity_logs FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON admin_actions FOR ALL USING (true);
+CREATE POLICY "Allow all operations" ON notifications FOR ALL USING (true);
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address);
@@ -90,3 +106,5 @@ CREATE INDEX IF NOT EXISTS idx_evidence_case ON evidence(case_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_submitted ON evidence(submitted_by);
 CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_actions_admin ON admin_actions(admin_wallet);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_wallet);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_wallet, is_read);
