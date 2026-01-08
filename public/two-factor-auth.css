@@ -1,0 +1,145 @@
+/* Two-Factor Authentication Styles */
+
+.security-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.security-info h3 {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+}
+
+.security-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.security-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-enabled {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-disabled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* 2FA Modal Styles */
+.setup-step {
+    text-align: center;
+    padding: 20px;
+}
+
+.setup-step h3 {
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.setup-step p {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+#verification-code, #auth-code, #backup-code {
+    width: 200px;
+    padding: 12px;
+    border: 2px solid var(--border-light);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-family: 'JetBrains Mono', monospace;
+    margin: 16px 0;
+}
+
+#verification-code:focus, #auth-code:focus, #backup-code:focus {
+    outline: none;
+    border-color: var(--primary-red);
+}
+
+.qr-placeholder {
+    background: var(--light-gray);
+    border: 2px dashed var(--border-light);
+    border-radius: 8px;
+    padding: 40px;
+    margin: 20px 0;
+}
+
+#manual-code {
+    background: var(--light-gray);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+#backup-codes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 20px 0;
+}
+
+#backup-codes code {
+    background: var(--light-gray);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+#backup-code-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .security-option {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+    
+    .security-action {
+        justify-content: space-between;
+    }
+    
+    #backup-codes {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+}
