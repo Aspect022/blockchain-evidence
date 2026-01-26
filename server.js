@@ -17,7 +17,7 @@ const server = createServer(app);
 const io = new Server(server, {
     cors: {
         origin: process.env.NODE_ENV === 'production' 
-            ? ["https://your-domain.com"] 
+            ? (process.env.ALLOWED_ORIGINS?.split(',') || ["https://blockchain-evidence.onrender.com"]).map(url => url.trim())
             : ["http://localhost:3000", "http://127.0.0.1:3000"],
         methods: ["GET", "POST"]
     }
@@ -123,7 +123,7 @@ const notifyMultipleUsers = async (userWallets, title, message, type, data = {})
 // Middleware
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
-        ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://your-domain.com']
+        ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://blockchain-evidence.onrender.com']).map(url => url.trim())
         : ['http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true
 }));
