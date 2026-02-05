@@ -21,11 +21,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const eventName = context.eventName;
-            const action = context.payload.action;
+            const ctx = github.context;
+            const eventName = ctx.eventName;
+            const action = ctx.payload.action;
 
             // Helper: avoid replying to our own bot comments
-            const actor = context.actor;
+            const actor = ctx.actor;
             if (actor === 'github-actions[bot]') {
               core.info('Skipping because actor is github-actions[bot]');
               return;
@@ -49,9 +50,9 @@ Our team will review your issue shortly. Stay tuned and have a happy contributio
 ~ Team EVID-DGC 🔐`;
 
               await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.issue.number,
+                owner: ctx.repo.owner,
+                repo: ctx.repo.repo,
+                issue_number: ctx.payload.issue.number,
                 body
               });
 
@@ -82,9 +83,9 @@ Your contribution helps make this project better for everyone! 🚀
 
               // PRs are also "issues" in the API
               await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
+                owner: ctx.repo.owner,
+                repo: ctx.repo.repo,
+                issue_number: ctx.payload.pull_request.number,
                 body
               });
 
@@ -94,7 +95,7 @@ Your contribution helps make this project better for everyone! 🚀
 
             // 3) COMMENT ASKING FOR ASSIGNMENT
             if (eventName === 'issue_comment' && action === 'created') {
-              const commentBody = context.payload.comment.body.toLowerCase();
+              const commentBody = ctx.payload.comment.body.toLowerCase();
 
               // Keywords that indicate someone wants to be assigned
               const keywords = [
@@ -135,9 +136,9 @@ Collaboration is always welcome, and we appreciate your contribution to improvin
 ~ Team EVID-DGC 🔐`;
 
               await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.issue.number,
+                owner: ctx.repo.owner,
+                repo: ctx.repo.repo,
+                issue_number: ctx.payload.issue.number,
                 body
               });
 
