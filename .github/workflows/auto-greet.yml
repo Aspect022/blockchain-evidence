@@ -26,20 +26,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.issue.number,
-                body: `👋 Thank you for taking the time to raise this issue!
-
-We appreciate your contribution to improving the Project **EVID-DGC**. To help us address it effectively, please make sure you follow this: ⚠️
-
-### 📋 Important Guidelines:
-- 📖 Follow the issue guidelines: https://github.com/Gooichand/blockchain-evidence/issues/50
-- 📝 Fill this form: https://forms.cloud.microsoft/r/0VjHehyNaw
-- ✅ Use the issue template mentioned in pinned issue #50
-
-### 🕒 What's Next?
-Our team will review your issue shortly. Stay tuned and have a happy contribution! 🚀
-
----
-~ Team EVID-DGC 🔐`
+                body: '👋 Thank you for taking the time to raise this issue!\n\nWe appreciate your contribution to improving the Project **EVID-DGC**. To help us address it effectively, please make sure you follow this: ⚠️\n\n### 📋 Important Guidelines:\n- 📖 Follow the issue guidelines: https://github.com/Gooichand/blockchain-evidence/issues/50\n- 📝 Fill this form: https://forms.cloud.microsoft/r/0VjHehyNaw\n- ✅ Use the issue template mentioned in pinned issue #50\n\n### 🕒 What\'s Next?\nOur team will review your issue shortly. Stay tuned and have a happy contribution! 🚀\n\n---\n~ Team EVID-DGC 🔐'
               });
             }
             
@@ -48,51 +35,21 @@ Our team will review your issue shortly. Stay tuned and have a happy contributio
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.pull_request.number,
-                body: `🎉 Thank you for submitting a pull request!
-
-We appreciate the time and effort you've put into contributing to project **EVID-DGC**. To help us review your PR smoothly, please ensure that:
-
-### ✅ PR Checklist:
-- [ ] The PR description clearly explains the changes made
-- [ ] **Video or image of changes** (📸 **COMPULSORY** if UI/frontend changes are applicable)
-- [ ] add related issues are linked (e.g., "Fixes #123")
-- [ ] Commit messages are descriptive and follow our guidelines
-
-### 🔍 Review Process:
-Our team will review your PR as soon as possible. Feedback may be provided to ensure consistency with project standards. Collaboration is welcome—feel free to engage in discussion and iterate on the changes.
-
-Your contribution helps make this project better for everyone! 🚀
-
----
-~ Team EVID-DGC 🔐`
+                body: '🎉 Thank you for submitting a pull request!\n\nWe appreciate the time and effort you\'ve put into contributing to project **EVID-DGC**. To help us review your PR smoothly, please ensure that:\n\n### ✅ PR Checklist:\n- [ ] The PR description clearly explains the changes made\n- [ ] **Video or image of changes** (📸 **COMPULSORY** if UI/frontend changes are applicable)\n- [ ] add related issues are linked (e.g., "Fixes #123")\n- [ ] Commit messages are descriptive and follow our guidelines\n\n### 🔍 Review Process:\nOur team will review your PR as soon as possible. Feedback may be provided to ensure consistency with project standards. Collaboration is welcome—feel free to engage in discussion and iterate on the changes.\n\nYour contribution helps make this project better for everyone! 🚀\n\n---\n~ Team EVID-DGC 🔐'
               });
             }
             
             if (context.eventName === 'issue_comment' && context.payload.action === 'created') {
-              const comment = context.payload.comment.body.toLowerCase();
-              const keywords = ['assign', 'can i work', 'can i take', 'i would like to work', 'please assign'];
-              
-              if (keywords.some(keyword => comment.includes(keyword))) {
+              if (context.payload.comment.body.toLowerCase().includes('assign') || 
+                  context.payload.comment.body.toLowerCase().includes('can i work') || 
+                  context.payload.comment.body.toLowerCase().includes('can i take') || 
+                  context.payload.comment.body.toLowerCase().includes('i would like to work') || 
+                  context.payload.comment.body.toLowerCase().includes('please assign')) {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.payload.issue.number,
-                  body: `🙌 Thanks for your interest in working on this issue!
-
-We'd be happy to assign this issue to you soon. Before you start, please make sure to:
-
-### 📝 Pre-Assignment Requirements:
-- ✅ Fill this form: https://forms.cloud.microsoft/r/0VjHehyNaw
-- 📋 Follow proper order and workflow
-- 💡 **Comment your plan of action** to resolve this issue (required)
-
-### 🎯 Next Steps:
-Based on your plan of action, the issue will be assigned to you. If you run into any blockers, feel free to ask questions or request guidance. 
-
-Collaboration is always welcome, and we appreciate your contribution to improving this project! 🚀
-
----
-~ Team EVID-DGC 🔐`
+                  body: '🙌 Thanks for your interest in working on this issue!\n\nWe\'d be happy to assign this issue to you soon. Before you start, please make sure to:\n\n### 📝 Pre-Assignment Requirements:\n- ✅ Fill this form: https://forms.cloud.microsoft/r/0VjHehyNaw\n- 📋 Follow proper order and workflow\n- 💡 **Comment your plan of action** to resolve this issue (required)\n\n### 🎯 Next Steps:\nBased on your plan of action, the issue will be assigned to you. If you run into any blockers, feel free to ask questions or request guidance. \n\nCollaboration is always welcome, and we appreciate your contribution to improving this project! 🚀\n\n---\n~ Team EVID-DGC 🔐'
                 });
               }
             }
