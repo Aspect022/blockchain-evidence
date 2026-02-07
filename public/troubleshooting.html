@@ -5,225 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Troubleshooting - EVID-DGC</title>
+    <meta name="description" content="Common issues and solutions for EVID-DGC blockchain evidence management system.">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="icon" sizes="32x32" href="logo-32x32.png" type="image/png">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #ffffff 0%, #fef2f2 50%, #dc2626 100%);
-            background-attachment: fixed;
-            color: #8B0000;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 30px;
-        }
-
-        .sidebar {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 12px;
-            height: fit-content;
-            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.1);
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-
-        .sidebar h3 {
-            margin-bottom: 15px;
-            color: #D32F2F;
-        }
-
-        .sidebar ul {
-            list-style: none;
-        }
-
-        .sidebar li {
-            margin-bottom: 10px;
-        }
-
-        .sidebar a {
-            color: #B22222;
-            text-decoration: none;
-            display: block;
-            padding: 8px;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        .sidebar a:hover {
-            background: #FFEBEE;
-            color: #D32F2F;
-        }
-
-        .main-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.1);
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-
-        .breadcrumb {
-            font-size: 14px;
-            color: #DC143C;
-            margin-bottom: 20px;
-        }
-
-        .breadcrumb a {
-            color: #D32F2F;
-            text-decoration: none;
-        }
-
-        h1 {
-            color: #D32F2F;
-            margin-bottom: 10px;
-            font-size: 32px;
-        }
-
-        .subtitle {
-            color: #B22222;
-            margin-bottom: 30px;
-            font-size: 16px;
-        }
-
-        h2 {
-            color: #8B0000;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-left: 4px solid #D32F2F;
-            padding-left: 15px;
-        }
-
-        h3 {
-            color: #D32F2F;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-
-        .issue-card {
-            background: rgba(255, 235, 238, 0.8);
-            backdrop-filter: blur(5px);
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            border-left: 4px solid #D32F2F;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-
-        .issue-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #D32F2F;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .issue-description {
-            color: #B22222;
-            margin-bottom: 10px;
-        }
-
-        .solution {
-            background: #E8F5E9;
-            border-left: 4px solid #4CAF50;
-            padding: 15px;
-            margin-top: 10px;
-            border-radius: 0 8px 8px 0;
-        }
-
-        .solution strong {
-            color: #2E7D32;
-        }
-
-        .solution ul {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-
-        .solution li {
-            color: #2E7D32;
-            margin-bottom: 5px;
-        }
-
-        code {
-            background: #FFEBEE;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            color: #D32F2F;
-        }
-
-        .back-button {
-            display: inline-block;
-            margin-bottom: 20px;
-            padding: 8px 15px;
-            background: #D32F2F;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 16px rgba(220, 38, 38, 0.15);
-        }
-
-        .back-button:hover {
-            background: #C41C3B;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.2);
-        }
-
-        .logo {
-            margin-bottom: 20px;
-            font-size: 18px;
-            font-weight: bold;
-            color: #D32F2F;
-        }
-
-        .info-card {
-            background: rgba(255, 235, 238, 0.8);
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-
-        .warning-box {
-            background: #FFF3E0;
-            border-left: 4px solid #FF9800;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 0 8px 8px 0;
-        }
-
-        .warning-box strong {
-            color: #E65100;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                display: none;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/docs.css">
 </head>
 
 <body>
@@ -235,7 +20,7 @@
                 <li><a href="quickstart.html">Quick Start</a></li>
                 <li><a href="user-roles.html">User Roles</a></li>
                 <li><a href="api-reference.html">API Reference</a></li>
-                <li><a href="troubleshooting.html" style="color: #D32F2F; font-weight: bold;">Troubleshooting</a></li>
+                <li><a href="troubleshooting.html" class="active">Troubleshooting</a></li>
             </ul>
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
             <h3>Help</h3>
@@ -246,8 +31,20 @@
         </div>
         <div class="main-content">
             <a href="index.html" class="back-button">← Back to Home</a>
+
+            <!-- Mobile Navigation Fallback -->
+            <div class="mobile-nav">
+                <h4>📚 Documentation</h4>
+                <div class="mobile-nav-links">
+                    <a href="quickstart.html">Quick Start</a>
+                    <a href="user-roles.html">User Roles</a>
+                    <a href="api-reference.html">API Reference</a>
+                    <a href="troubleshooting.html" class="active">Troubleshooting</a>
+                </div>
+            </div>
+
             <div class="breadcrumb">
-                <a href="index.html">Home</a> > <a href="troubleshooting.html">Docs</a> > Troubleshooting
+                <a href="index.html">Home</a> &gt; <span>Troubleshooting</span>
             </div>
             <h1>Troubleshooting</h1>
             <p class="subtitle">Common issues and solutions</p>
@@ -450,10 +247,9 @@
                         target="_blank" style="color: #D32F2F;">Report a Bug</a></p>
             </div>
 
-            <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
-            <p style="text-align: center; color: #999; font-size: 14px; margin-top: 40px;">
+            <div class="doc-footer">
                 Need help? Contact us at <strong>DGC2MHNE@proton.me</strong>
-            </p>
+            </div>
         </div>
     </div>
 </body>
