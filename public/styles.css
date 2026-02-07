@@ -2182,6 +2182,22 @@ body.modal-open {
         margin-left: 0.5rem;
     }
 
+}
+/* Privacy Policy and Data Protection Styles */
+.privacy-content, .data-protection-content {
+    max-width: none;
+}
+
+.privacy-content section, .data-protection-content section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.privacy-content section:last-child, .data-protection-content section:last-child {
+    border-bottom: none;
+}
+
     /* Privacy Policy and Data Protection Styles */
     .privacy-content,
     .data-protection-content {
