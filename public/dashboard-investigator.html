@@ -155,19 +155,19 @@
                     <p>Recent cases requiring attention</p>
                 </div>
                 <div class="cases-filters">
-                    <button class="filter-chip active" onclick="filterCases('all')">
+                    <button class="filter-chip active" onclick="filterCases(event, 'all')">
                         <i data-lucide="list"></i>
                         All
                     </button>
-                    <button class="filter-chip" onclick="filterCases('open')">
+                    <button class="filter-chip" onclick="filterCases(event, 'open')">
                         <i data-lucide="folder"></i>
                         Open
                     </button>
-                    <button class="filter-chip" onclick="filterCases('analyzing')">
+                    <button class="filter-chip" onclick="filterCases(event, 'analyzing')">
                         <i data-lucide="activity"></i>
                         Analyzing
                     </button>
-                    <button class="filter-chip" onclick="filterCases('closed')">
+                    <button class="filter-chip" onclick="filterCases(event, 'closed')">
                         <i data-lucide="archive"></i>
                         Closed
                     </button>
@@ -933,14 +933,18 @@
         }
         
         // ===== FILTER FUNCTIONS =====
-        function filterCases(filter) {
+        function filterCases(event, filter) {
             currentFilter = filter;
             
             // Update active state
             document.querySelectorAll('.filter-chip').forEach(chip => {
                 chip.classList.remove('active');
             });
-            event.currentTarget.classList.add('active');
+            
+            // Add active class to clicked button
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
             
             // Filter case cards
             const cards = document.querySelectorAll('.case-card-premium');

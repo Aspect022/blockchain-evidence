@@ -165,11 +165,11 @@
     <!-- ===== PREMIUM VIEW TOGGLE ===== -->
     <div class="view-toggle">
         <div class="view-mode">
-            <button class="view-btn active" onclick="setViewMode('grid')">
+            <button class="view-btn active" onclick="setViewMode(event, 'grid')">
                 <i data-lucide="grid"></i>
                 Grid View
             </button>
-            <button class="view-btn" onclick="setViewMode('table')">
+            <button class="view-btn" onclick="setViewMode(event, 'table')">
                 <i data-lucide="table"></i>
                 Table View
             </button>
@@ -251,6 +251,7 @@
         let currentPage = 1;
         let itemsPerPage = 6;
         let currentSort = 'newest';
+        let lastFilteredCount = 0; // Track filtered results count for pagination
         let activeFilters = {
             status: {
                 open: true,
@@ -427,6 +428,9 @@
             
             // Apply sorting
             filteredCases = sortCases(filteredCases);
+            
+            // Store filtered count for pagination
+            lastFilteredCount = filteredCases.length;
             
             // Render based on current view
             renderCases(filteredCases);
@@ -661,19 +665,19 @@
         }
         
         function changePage(direction) {
+            // Calculate total pages from filtered results count
+            const totalPages = Math.ceil(lastFilteredCount / itemsPerPage);
+            
             if (direction === 'prev' && currentPage > 1) {
                 currentPage--;
-            } else if (direction === 'next') {
-                const totalItems = document.querySelectorAll('.case-vault-card').length;
-                const totalPages = Math.ceil(totalItems / itemsPerPage);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                }
+                filterCases();
+            } else if (direction === 'next' && currentPage < totalPages) {
+                currentPage++;
+                filterCases();
             }
-            filterCases();
         }
         
-        function setViewMode(mode) {
+        function setViewMode(event, mode) {
             currentView = mode;
             currentPage = 1; // Reset to first page
             

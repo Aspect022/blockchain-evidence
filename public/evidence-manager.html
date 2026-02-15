@@ -987,8 +987,16 @@
         
         function truncateFileName(name, maxLength = 25) {
             if (name.length <= maxLength) return name;
-            const ext = name.split('.').pop();
-            const nameWithoutExt = name.slice(0, name.lastIndexOf('.'));
+            
+            const dotIndex = name.lastIndexOf('.');
+            
+            // Handle files without extension
+            if (dotIndex === -1) {
+                return name.slice(0, maxLength - 3) + '...';
+            }
+            
+            const ext = name.slice(dotIndex + 1);
+            const nameWithoutExt = name.slice(0, dotIndex);
             return nameWithoutExt.slice(0, maxLength - 3 - ext.length) + '...' + ext;
         }
         

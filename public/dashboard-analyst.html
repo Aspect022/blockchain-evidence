@@ -154,19 +154,19 @@
                     <p>Prioritized cases awaiting forensic examination</p>
                 </div>
                 <div class="queue-filters">
-                    <button class="filter-chip active" onclick="filterQueue('all')">
+                    <button class="filter-chip active" onclick="filterQueue(event, 'all')">
                         <i data-lucide="list"></i>
                         All
                     </button>
-                    <button class="filter-chip" onclick="filterQueue('high')">
+                    <button class="filter-chip" onclick="filterQueue(event, 'high')">
                         <i data-lucide="alert-triangle"></i>
                         High
                     </button>
-                    <button class="filter-chip" onclick="filterQueue('pending')">
+                    <button class="filter-chip" onclick="filterQueue(event, 'pending')">
                         <i data-lucide="clock"></i>
                         Pending
                     </button>
-                    <button class="filter-chip" onclick="filterQueue('processing')">
+                    <button class="filter-chip" onclick="filterQueue(event, 'processing')">
                         <i data-lucide="loader"></i>
                         Processing
                     </button>
@@ -719,14 +719,18 @@
         }
         
         // ===== FILTER FUNCTIONS =====
-        function filterQueue(filter) {
+        function filterQueue(event, filter) {
             currentFilter = filter;
             
             // Update active state
             document.querySelectorAll('.filter-chip').forEach(chip => {
                 chip.classList.remove('active');
             });
-            event.currentTarget.classList.add('active');
+            
+            // Add active class to clicked button
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
             
             // Filter evidence cards
             const cards = document.querySelectorAll('.evidence-card-premium');

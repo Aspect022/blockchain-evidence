@@ -98,6 +98,7 @@
                     <i data-lucide="folder"></i>
                 </div>
                 <div class="stat-info">
+                    <div class="stat-number" id="totalCases">12,847</div>
                     <div class="stat-label">Public Cases</div>
                 </div>
             </div>
@@ -106,6 +107,7 @@
                     <i data-lucide="file"></i>
                 </div>
                 <div class="stat-info">
+                    <div class="stat-number" id="totalEvidence">48,392</div>
                     <div class="stat-label">Evidence Records</div>
                 </div>
             </div>
@@ -114,6 +116,7 @@
                     <i data-lucide="shield"></i>
                 </div>
                 <div class="stat-info">
+                    <div class="stat-number" id="verifiedPercent">99.8%</div>
                     <div class="stat-label">Blockchain Verified</div>
                 </div>
             </div>
@@ -122,6 +125,7 @@
                     <i data-lucide="users"></i>
                 </div>
                 <div class="stat-info">
+                    <div class="stat-number" id="activeUsers">2,341</div>
                     <div class="stat-label">Active Users</div>
                 </div>
             </div>
@@ -412,6 +416,8 @@
             }
         ];
         
+        // Store original unfiltered results
+        let allResults = [];
         let currentResults = [];
         let currentPage = 1;
         let itemsPerPage = 6;
@@ -514,6 +520,8 @@
                            (record.caseId && record.caseId.toLowerCase().includes(searchLower));
                 });
                 
+                // Store original unfiltered results
+                allResults = results;
                 currentResults = results;
                 currentPage = 1;
                 
@@ -538,8 +546,8 @@
                 dateTo: document.getElementById('dateTo').value
             };
             
-            // Apply filters to current results
-            let filteredResults = currentResults;
+            // Apply filters to original unfiltered results (allResults)
+            let filteredResults = [...allResults];
             
             // Filter by type
             if (activeFilters.type !== 'all') {
