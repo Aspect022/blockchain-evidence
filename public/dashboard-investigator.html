@@ -54,28 +54,28 @@
                     <div class="stat-icon">
                         <i data-lucide="folder"></i>
                     </div>
-                    <div class="stat-number" id="activeCases">5</div>
+                    <div class="stat-number" id="activeCases">0</div>
                     <div class="stat-label">Active Cases</div>
                 </div>
                 <div class="stat-card-premium">
                     <div class="stat-icon">
                         <i data-lucide="file"></i>
                     </div>
-                    <div class="stat-number" id="evidenceItems">23</div>
+                    <div class="stat-number" id="evidenceItems">0</div>
                     <div class="stat-label">Evidence Items</div>
                 </div>
                 <div class="stat-card-premium">
                     <div class="stat-icon">
                         <i data-lucide="clock"></i>
                     </div>
-                    <div class="stat-number" id="pendingReviews">3</div>
+                    <div class="stat-number" id="pendingReviews">0</div>
                     <div class="stat-label">Pending Review</div>
                 </div>
                 <div class="stat-card-premium">
                     <div class="stat-icon">
                         <i data-lucide="check-circle"></i>
                     </div>
-                    <div class="stat-number" id="verifiedItems">42</div>
+                    <div class="stat-number" id="verifiedItems">0</div>
                     <div class="stat-label">Verified Items</div>
                 </div>
             </div>
@@ -356,18 +356,40 @@
             const cases = JSON.parse(localStorage.getItem('cases') || '[]');
             const evidence = JSON.parse(localStorage.getItem('evidence') || '[]');
             
-            const activeCases = cases.filter(c => c.status === 'OPEN').length || 5;
-            const pendingReviews = evidence.filter(e => e.status === 'Pending').length || 3;
+            // Calculate actual counts from data
+            const activeCasesCount = cases.filter(c => c.status === 'OPEN').length;
+            const evidenceItemsCount = evidence.length;
+            const pendingReviewsCount = evidence.filter(e => e.status === 'Pending').length;
+            const verifiedItemsCount = evidence.filter(e => e.status === 'Verified').length;
             
-            // Animate stats
-            animateValue('activeCases', 0, activeCases, 800);
-            animateValue('evidenceItems', 0, evidence.length || 23, 800);
-            animateValue('pendingReviews', 0, pendingReviews, 800);
-            animateValue('verifiedItems', 0, 42, 800);
+            // Use fallback demo values only when localStorage is empty
+            const finalActiveCases = cases.length > 0 ? activeCasesCount : 5;
+            const finalEvidenceItems = evidence.length > 0 ? evidenceItemsCount : 23;
+            const finalPendingReviews = evidence.length > 0 ? pendingReviewsCount : 3;
+            const finalVerifiedItems = evidence.length > 0 ? verifiedItemsCount : 42;
+            
+            // Animate stats with actual or fallback values
+            animateValue('activeCases', 0, finalActiveCases, 800);
+            animateValue('evidenceItems', 0, finalEvidenceItems, 800);
+            animateValue('pendingReviews', 0, finalPendingReviews, 800);
+            animateValue('verifiedItems', 0, finalVerifiedItems, 800);
             
             // Update cases grid with real data if available
             if (cases.length > 0) {
                 updateCasesGrid(cases.slice(0, 3));
+            } else {
+                // Show empty state or default message when no cases
+                const casesGrid = document.getElementById('casesGrid');
+                if (casesGrid) {
+                    casesGrid.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 48px;">
+                            <i data-lucide="folder-open" style="width: 48px; height: 48px; color: var(--investigation-gray-400); margin-bottom: 16px;"></i>
+                            <h3 style="color: var(--investigation-gray-700); margin-bottom: 8px;">No Cases Found</h3>
+                            <p style="color: var(--investigation-gray-500);">Create your first case to get started.</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                }
             }
         }
         

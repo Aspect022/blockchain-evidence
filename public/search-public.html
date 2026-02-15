@@ -24,10 +24,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-
+    <!-- Lucide Icons - Pinned to specific version for security -->
+    <script src="https://unpkg.com/lucide@0.344.0"></script>
 </head>
 
 <body>
@@ -251,14 +249,29 @@
             <button class="pagination-btn" onclick="changePage('prev')" id="prevBtn" disabled>
                 <i data-lucide="chevron-left"></i>
             </button>
-            <button class="pagination-btn active" data-page="1">1</button>
-            <button class="pagination-btn" data-page="2">2</button>
-            <button class="pagination-btn" data-page="3">3</button>
-            <button class="pagination-btn" data-page="4">4</button>
-            <button class="pagination-btn" data-page="5">5</button>
+            <div class="pagination-pages" id="paginationPages">
+                <!-- Dynamic page buttons will be inserted here -->
+            </div>
             <button class="pagination-btn" onclick="changePage('next')" id="nextBtn">
                 <i data-lucide="chevron-right"></i>
             </button>
+        </div>
+    </div>
+
+    <!-- ===== PREMIUM RECORD DETAIL MODAL ===== -->
+    <div id="recordDetailModal" class="search-modal">
+        <div class="modal-content-premium">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h2 style="font-size: 24px; font-weight: 700; color: var(--search-gray-900);" id="recordModalTitle">
+                    Record Details
+                </h2>
+                <button onclick="closeRecordModal()" style="background: none; border: none; cursor: pointer; padding: 8px;">
+                    <i data-lucide="x" style="width: 20px; height: 20px; color: var(--search-gray-500);"></i>
+                </button>
+            </div>
+            <div id="recordModalContent">
+                <!-- Dynamic record details will be inserted here -->
+            </div>
         </div>
     </div>
 
@@ -536,11 +549,8 @@
                 currentResults = results;
                 currentPage = 1;
                 
-                // Apply filters
+                // Apply filters (this will also render the results)
                 applyFilters();
-                
-                // Hide loading and show results
-                renderResults();
                 
                 // Track search
                 trackSearch(searchTerm, results.length);
@@ -804,25 +814,37 @@
         
         function updatePagination(totalItems) {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
-            const pagination = document.getElementById('pagination');
+            const paginationContainer = document.getElementById('pagination');
+            const paginationPages = document.getElementById('paginationPages');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             
+            if (totalPages <= 1) {
+                paginationContainer.style.display = 'none';
+                return;
+            }
+            
+            paginationContainer.style.display = 'flex';
             prevBtn.disabled = currentPage === 1;
             nextBtn.disabled = currentPage === totalPages;
             
-            // Update page buttons
-            const pageButtons = pagination.querySelectorAll('.pagination-btn[data-page]');
-            pageButtons.forEach((btn, index) => {
-                const pageNum = index + 1;
-                if (pageNum <= totalPages) {
-                    btn.style.display = 'flex';
-                    btn.classList.toggle('active', pageNum === currentPage);
-                    btn.setAttribute('onclick', `goToPage(${pageNum})`);
-                } else {
-                    btn.style.display = 'none';
+            // Clear existing page buttons
+            paginationPages.innerHTML = '';
+            
+            // Generate page buttons dynamically
+            for (let i = 1; i <= totalPages; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = 'pagination-btn';
+                if (i === currentPage) {
+                    pageBtn.classList.add('active');
                 }
-            });
+                pageBtn.setAttribute('data-page', i);
+                pageBtn.textContent = i;
+                pageBtn.onclick = function() {
+                    goToPage(i);
+                };
+                paginationPages.appendChild(pageBtn);
+            }
         }
         
         function goToPage(page) {
@@ -866,14 +888,170 @@
         }
         
         function viewRecord(recordId) {
-            // Escape record ID for safe display
-            const escapedId = escapeHtml(recordId);
-            showNotification(`📋 Viewing record: ${escapedId}`, 'info');
+            // Find the record in our data
+            const record = allResults.find(r => r.id === recordId) || 
+                          publicRecords.find(r => r.id === recordId);
             
-            // Simulate navigation
-            setTimeout(() => {
-                showNotification('🔗 Redirecting to record details...', 'info');
-            }, 500);
+            if (!record) {
+                showNotification('❌ Record not found', 'error');
+                return;
+            }
+            
+            // Escape record data for safe display
+            const escapedId = escapeHtml(record.id);
+            const escapedTitle = escapeHtml(record.title);
+            const escapedType = escapeHtml(record.type.toUpperCase());
+            const escapedDate = escapeHtml(formatDate(record.date));
+            const escapedDescription = escapeHtml(record.description);
+            const escapedBlockchainStatus = record.blockchainVerified ? 
+                '<span style="color: #10b981; display: flex; align-items: center; gap: 4px;"><i data-lucide="shield" style="width: 14px; height: 14px;"></i> Verified</span>' : 
+                '<span style="color: var(--search-gray-500);">Pending</span>';
+            
+            // Build modal content based on record type
+            let modalContent = '';
+            
+            if (record.type === 'case') {
+                const escapedLocation = escapeHtml(record.location);
+                const escapedInvestigator = escapeHtml(record.investigator);
+                const escapedEvidenceCount = escapeHtml(String(record.evidenceCount || 0));
+                
+                modalContent = `
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--search-red-soft); border-radius: 16px;">
+                            <div style="width: 48px; height: 48px; background: var(--search-red-muted); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="folder" style="width: 24px; height: 24px; color: var(--search-red);"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Case ID</div>
+                                <div style="font-weight: 600; font-family: monospace;">${escapedId}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Title</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedTitle}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Date</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedDate}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Location</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedLocation}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Investigator</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedInvestigator}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Evidence Items</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedEvidenceCount}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Blockchain</div>
+                                <div style="margin-top: 4px;">${escapedBlockchainStatus}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--search-gray-50); padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 12px; color: var(--search-gray-500); margin-bottom: 8px;">Description</div>
+                            <p style="line-height: 1.6; color: var(--search-gray-700);">${escapedDescription}</p>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-primary" onclick="closeRecordModal()" style="flex: 1;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const escapedCaseId = escapeHtml(record.caseId);
+                const escapedFileType = escapeHtml(capitalizeFirst(record.fileType));
+                const escapedFileSize = escapeHtml(formatFileSize(record.fileSize));
+                const escapedUploadedBy = escapeHtml(record.uploadedBy);
+                
+                modalContent = `
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--search-red-soft); border-radius: 16px;">
+                            <div style="width: 48px; height: 48px; background: var(--search-red-muted); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="file" style="width: 24px; height: 24px; color: var(--search-red);"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Evidence ID</div>
+                                <div style="font-weight: 600; font-family: monospace;">${escapedId}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Title</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedTitle}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Date</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedDate}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Case ID</div>
+                                <div style="font-weight: 600; margin-top: 4px; font-family: monospace;">${escapedCaseId}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">File Type</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedFileType}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">File Size</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedFileSize}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Uploaded By</div>
+                                <div style="font-weight: 600; margin-top: 4px;">${escapedUploadedBy}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--search-gray-500);">Blockchain</div>
+                                <div style="margin-top: 4px;">${escapedBlockchainStatus}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--search-gray-50); padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 12px; color: var(--search-gray-500); margin-bottom: 8px;">Description</div>
+                            <p style="line-height: 1.6; color: var(--search-gray-700);">${escapedDescription}</p>
+                        </div>
+                        
+                        ${record.hash ? `
+                            <div style="background: var(--search-gray-50); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; word-break: break-all;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                    <i data-lucide="fingerprint" style="width: 14px; height: 14px; color: var(--search-red);"></i>
+                                    <span style="font-weight: 600;">SHA-256 Hash</span>
+                                </div>
+                                ${escapeHtml(record.hash)}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-primary" onclick="closeRecordModal()" style="flex: 1;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('recordModalTitle').textContent = `${record.type === 'case' ? 'Case' : 'Evidence'} Details`;
+            document.getElementById('recordModalContent').innerHTML = modalContent;
+            document.getElementById('recordDetailModal').classList.add('active');
+            
+            // Reinitialize icons in modal
+            lucide.createIcons();
+            
+            // Show notification
+            showNotification(`📋 Viewing ${record.type}: ${escapedId}`, 'info');
+        }
+        
+        function closeRecordModal() {
+            document.getElementById('recordDetailModal').classList.remove('active');
         }
         
         function suggestedSearch(term) {
@@ -1003,6 +1181,14 @@
             }, 4000);
         }
         
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('recordDetailModal');
+            if (event.target === modal) {
+                closeRecordModal();
+            }
+        }
+        
         // Add slideOut animation
         const style = document.createElement('style');
         style.textContent = `
@@ -1026,6 +1212,24 @@
                     opacity: 0;
                     transform: translateX(100%);
                 }
+            }
+            
+            .search-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(8px);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            
+            .search-modal.active {
+                display: flex;
             }
         `;
         document.head.appendChild(style);

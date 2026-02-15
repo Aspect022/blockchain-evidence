@@ -106,8 +106,8 @@
                             </div>
                             <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--cases-gray-100);">
                                 <div class="filter-option" onclick="toggleFilter(this, 'blockchain', 'verified')">
-                                    <input type="checkbox" id="filterVerified" checked>
-                                    <span>Blockchain Verified</span>
+                                    <input type="checkbox" id="filterVerified">
+                                    <span>Blockchain Verified Only</span>
                                     <span class="count" id="verifiedCount">6</span>
                                 </div>
                             </div>
@@ -213,9 +213,9 @@
         <button class="pagination-btn" onclick="changePage('prev')" id="prevBtn" disabled>
             <i data-lucide="chevron-left"></i>
         </button>
-        <button class="pagination-btn active" data-page="1">1</button>
-        <button class="pagination-btn" data-page="2">2</button>
-        <button class="pagination-btn" data-page="3">3</button>
+        <div class="pagination-pages" id="paginationPages">
+            <!-- Dynamic page buttons will be inserted here -->
+        </div>
         <button class="pagination-btn" onclick="changePage('next')" id="nextBtn">
             <i data-lucide="chevron-right"></i>
         </button>
@@ -260,7 +260,7 @@
                 archived: true
             },
             blockchain: {
-                verified: true
+                verifiedOnly: false // Default to false = show all cases
             }
         };
         
@@ -421,8 +421,8 @@
                     return false;
                 }
                 
-                // Apply blockchain filter
-                if (activeFilters.blockchain.verified && !caseItem.blockchainVerified) {
+                // Apply blockchain filter - only filter if verifiedOnly is true
+                if (activeFilters.blockchain.verifiedOnly && !caseItem.blockchainVerified) {
                     return false;
                 }
                 
@@ -665,6 +665,7 @@
         function updatePagination(totalItems) {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             const paginationContainer = document.getElementById('pagination');
+            const paginationPages = document.getElementById('paginationPages');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             
@@ -677,23 +678,34 @@
             prevBtn.disabled = currentPage === 1;
             nextBtn.disabled = currentPage === totalPages;
             
-            // Update page buttons
-            const pageButtons = paginationContainer.querySelectorAll('.pagination-btn[data-page]');
-            pageButtons.forEach((btn, index) => {
-                const pageNum = index + 1;
-                if (pageNum <= totalPages) {
-                    btn.style.display = 'flex';
-                    btn.classList.toggle('active', pageNum === currentPage);
-                    btn.setAttribute('onclick', `goToPage(${pageNum})`);
-                } else {
-                    btn.style.display = 'none';
+            // Clear existing page buttons
+            paginationPages.innerHTML = '';
+            
+            // Generate page buttons dynamically
+            for (let i = 1; i <= totalPages; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = 'pagination-btn';
+                if (i === currentPage) {
+                    pageBtn.classList.add('active');
                 }
-            });
+                pageBtn.setAttribute('data-page', i);
+                pageBtn.textContent = i;
+                pageBtn.onclick = function() {
+                    goToPage(i);
+                };
+                paginationPages.appendChild(pageBtn);
+            }
         }
         
         function goToPage(page) {
             currentPage = page;
             filterCases();
+            
+            // Scroll to top of results
+            document.querySelector('.cases-grid-section').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }
         
         function changePage(direction) {
@@ -707,6 +719,12 @@
                 currentPage++;
                 filterCases();
             }
+            
+            // Scroll to top of results
+            document.querySelector('.cases-grid-section').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }
         
         function setViewMode(event, mode) {
@@ -720,6 +738,12 @@
             event.currentTarget.classList.add('active');
             
             filterCases();
+            
+            // Scroll to top of results
+            document.querySelector('.cases-grid-section').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }
         
         function toggleFilterMenu() {
@@ -734,7 +758,7 @@
             if (filterType === 'status') {
                 activeFilters.status[filterValue] = checkbox.checked;
             } else if (filterType === 'blockchain') {
-                activeFilters.blockchain.verified = checkbox.checked;
+                activeFilters.blockchain.verifiedOnly = checkbox.checked;
             }
             
             currentPage = 1; // Reset to first page
@@ -747,7 +771,7 @@
                 checkbox.checked = true;
             });
             
-            // Reset filters object
+            // Reset filters object - default to show all cases
             activeFilters = {
                 status: {
                     open: true,
@@ -756,7 +780,7 @@
                     archived: true
                 },
                 blockchain: {
-                    verified: true
+                    verifiedOnly: false // Default to false = show all cases
                 }
             };
             

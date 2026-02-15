@@ -24,8 +24,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons - Pinned to specific version for security -->
+    <script src="https://unpkg.com/lucide@0.344.0"></script>
     
     <!-- Web3.js for Blockchain Integration -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
@@ -668,7 +668,15 @@
                 const escapedDate = escapeHtml(formatDate(item.uploadedAt));
                 const escapedFileSize = escapeHtml(formatFileSize(item.fileSize));
                 const escapedType = escapeHtml(capitalizeFirst(item.type));
-                const escapedHash = escapeHtml(item.hash || item.fileHash?.substring(0, 16) + '...' || 'N/A');
+                
+                // Fix: Properly handle hash fallback without "undefined..." bug
+                let hashDisplay = 'N/A';
+                if (item.hash) {
+                    hashDisplay = item.hash;
+                } else if (item.fileHash) {
+                    hashDisplay = item.fileHash.substring(0, 16) + '...';
+                }
+                const escapedHash = escapeHtml(hashDisplay);
                 
                 const iconName = getEvidenceIcon(item.type);
                 const statusIcon = item.status === 'verified' ? 'shield' : 'clock';
@@ -778,8 +786,20 @@
             const escapedCapitalizedType = escapeHtml(capitalizeFirst(evidence.type));
             const escapedLocation = escapeHtml(evidence.location || 'Not specified');
             const escapedDescription = escapeHtml(evidence.description || 'No description provided.');
-            const escapedFileHash = escapeHtml(evidence.fileHash || '7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b');
-            const escapedBlockchainTx = escapeHtml(evidence.blockchainTx || '0x7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b');
+            
+            // Fix: Properly handle file hash fallback without "undefined..." bug
+            let fileHashDisplay = '7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b';
+            if (evidence.fileHash) {
+                fileHashDisplay = evidence.fileHash.substring(0, 32) + '...';
+            }
+            const escapedFileHash = escapeHtml(fileHashDisplay);
+            
+            // Fix: Properly handle blockchain transaction fallback
+            let blockchainTxDisplay = '0x7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b';
+            if (evidence.blockchainTx) {
+                blockchainTxDisplay = evidence.blockchainTx;
+            }
+            const escapedBlockchainTx = escapeHtml(blockchainTxDisplay);
             
             const iconName = getEvidenceIcon(evidence.type);
             const statusIcon = evidence.status === 'verified' ? 'shield' : 'clock';
@@ -891,8 +911,20 @@
             const escapedUploadedBy = escapeHtml(evidence.uploadedBy);
             const escapedDateTime = escapeHtml(formatDateTime(evidence.uploadedAt));
             const escapedCurrentUser = escapeHtml(currentUser?.fullName || 'System');
-            const escapedFileHash = escapeHtml(evidence.fileHash?.substring(0, 32) + '...' || '7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d');
-            const escapedBlockchainTx = escapeHtml(evidence.blockchainTx || '0x7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d5e6f7a8b');
+            
+            // Fix: Properly handle file hash fallback without "undefined..." bug
+            let fileHashDisplay = '7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d';
+            if (evidence.fileHash) {
+                fileHashDisplay = evidence.fileHash.substring(0, 32) + '...';
+            }
+            const escapedFileHash = escapeHtml(fileHashDisplay);
+            
+            // Fix: Properly handle blockchain transaction fallback
+            let blockchainTxDisplay = '0x7d3a8f9b2c1e5a6b7c8d9e0f1a2b3c4d5e6f7a8b';
+            if (evidence.blockchainTx) {
+                blockchainTxDisplay = evidence.blockchainTx;
+            }
+            const escapedBlockchainTx = escapeHtml(blockchainTxDisplay);
             
             const statusIcon = evidence.status === 'verified' ? 'shield' : 'clock';
             const statusText = evidence.status === 'verified' ? 'VERIFIED' : 'PENDING';
