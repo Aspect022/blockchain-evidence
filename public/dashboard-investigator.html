@@ -24,8 +24,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons - Pinned to specific version for security -->
+    <script src="https://unpkg.com/lucide@0.344.0"></script>
     
 </head>
 
@@ -351,16 +351,34 @@
                 .replace(/'/g, '&#039;');
         }
         
+        // Helper function to normalize status values (convert to lowercase for comparison)
+        function normalizeStatus(status) {
+            if (status === undefined || status === null) return '';
+            return String(status).toLowerCase();
+        }
+        
         function loadInvestigationData() {
             // Load real data from localStorage
             const cases = JSON.parse(localStorage.getItem('cases') || '[]');
             const evidence = JSON.parse(localStorage.getItem('evidence') || '[]');
             
-            // Calculate actual counts from data
-            const activeCasesCount = cases.filter(c => c.status === 'OPEN').length;
+            // Calculate actual counts from data using case-insensitive comparison
+            const activeCasesCount = cases.filter(c => {
+                const status = normalizeStatus(c.status);
+                return status === 'open' || status === 'analyzing';
+            }).length;
+            
             const evidenceItemsCount = evidence.length;
-            const pendingReviewsCount = evidence.filter(e => e.status === 'Pending').length;
-            const verifiedItemsCount = evidence.filter(e => e.status === 'Verified').length;
+            
+            const pendingReviewsCount = evidence.filter(e => {
+                const status = normalizeStatus(e.status);
+                return status === 'pending';
+            }).length;
+            
+            const verifiedItemsCount = evidence.filter(e => {
+                const status = normalizeStatus(e.status);
+                return status === 'verified';
+            }).length;
             
             // Use fallback demo values only when localStorage is empty
             const finalActiveCases = cases.length > 0 ? activeCasesCount : 5;
@@ -530,7 +548,7 @@
             const newCase = {
                 id: caseId,
                 title: title,
-                status: 'OPEN',
+                status: 'OPEN', // Keep uppercase for display consistency
                 location: document.getElementById('newCaseLocation')?.value || 'Not specified',
                 description: document.getElementById('newCaseDescription')?.value || '',
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -626,7 +644,7 @@
                 description: document.getElementById('evidenceDescription')?.value || '',
                 uploadedBy: currentUser?.fullName || 'Investigator',
                 uploadedAt: new Date().toISOString(),
-                status: 'Verified',
+                status: 'Verified', // Keep capitalized for display consistency
                 hash: 'sha256:' + Math.random().toString(36).substring(2, 15)
             };
             

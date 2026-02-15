@@ -24,8 +24,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons - Pinned to specific version for security -->
+    <script src="https://unpkg.com/lucide@0.344.0"></script>
 </head>
 
 <body>
@@ -294,14 +294,24 @@
             });
         }
         
+        // Helper function to normalize status values (convert to lowercase)
+        function normalizeStatus(status) {
+            if (status === undefined || status === null) return '';
+            return String(status).toLowerCase();
+        }
+        
         function loadCasesData() {
             // Try to load from localStorage first
             const storedCases = JSON.parse(localStorage.getItem('cases') || '[]');
             
             if (storedCases.length > 0) {
-                casesData = storedCases;
+                // Normalize status values from stored cases (could be uppercase from investigator dashboard)
+                casesData = storedCases.map(c => ({
+                    ...c,
+                    status: normalizeStatus(c.status)
+                }));
             } else {
-                // Mock data for demonstration
+                // Mock data for demonstration - already lowercase
                 casesData = [
                     {
                         id: 'INV-2024-001',

@@ -668,9 +668,9 @@
             // Update pagination buttons
             updatePagination(sortedResults.length);
             
-            // Render results with escaped values
+            // Render results with escaped values (no inline onclick handlers)
             container.innerHTML = paginatedResults.map(record => {
-                // Escape all user-provided content
+                // Escape all user-provided content for display
                 const escapedId = escapeHtml(record.id);
                 const escapedTitle = escapeHtml(record.title);
                 const escapedDate = escapeHtml(formatDate(record.date));
@@ -680,6 +680,10 @@
                 const escapedFileSize = escapeHtml(record.fileSize ? formatFileSize(record.fileSize) : '');
                 const escapedInvestigator = escapeHtml(record.investigator || '');
                 const escapedLocation = escapeHtml(record.location || '');
+                
+                // For data attribute, we need to encode the ID safely (not escaped for HTML)
+                // We'll use the raw ID for the data attribute since it will be read via dataset
+                const rawId = record.id || '';
                 
                 // Handle tags
                 const tagsHtml = record.tags ? record.tags.slice(0, 2).map(tag => 
@@ -694,7 +698,7 @@
                 const idPrefix = record.type === 'case' ? 'Case #' : 'Evidence ID: ';
                 
                 return `
-                    <div class="result-card" onclick="viewRecord('${escapedId}')">
+                    <div class="result-card" data-record-id="${rawId}">
                         <span class="result-type-badge ${record.type}">
                             <i data-lucide="${typeIcon}"></i>
                             ${typeText}
@@ -780,7 +784,24 @@
                 `;
             }).join('');
             
+            // Attach click event listeners to result cards
+            attachResultCardListeners();
+            
             lucide.createIcons();
+        }
+        
+        function attachResultCardListeners() {
+            const container = document.getElementById('resultsContainer');
+            const cards = container.querySelectorAll('.result-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const recordId = this.dataset.recordId;
+                    if (recordId) {
+                        viewRecord(recordId);
+                    }
+                });
+            });
         }
         
         function sortResultsData(results) {
