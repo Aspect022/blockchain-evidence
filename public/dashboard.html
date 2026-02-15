@@ -24,8 +24,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons (Premium Icon Set) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons - Pinned to specific version with Subresource Integrity for security -->
+    <script src="https://unpkg.com/lucide@0.344.0" integrity="sha384-Kl3cQhNN0eOsiHm8vPcqgY72Lp6P/9GPQOJGfQnN/zTbtFTl4tYxQ+UqIsb0m0Y0" crossorigin="anonymous"></script>
     
     <!-- Google Analytics - Premium Tracking -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-KEYDE0ZH4Z"></script>
@@ -136,6 +136,7 @@
             '8': 'System Administrator'
         };
         
+        // Role icons for enhanced UX (from your branch)
         const ROLE_ICONS = {
             'admin': 'shield',
             'investigator': 'badge',
@@ -147,9 +148,11 @@
             'public_viewer': 'eye'
         };
         
+        // User cache for performance (from main branch)
+        const userCache = new Map();
+        
         let retryCount = 0;
         const MAX_RETRIES = 2;
-        let progressInterval;
         
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize Lucide icons
@@ -171,7 +174,8 @@
                 const currentUserRaw = localStorage.getItem('currentUser');
                 
                 if (!currentUserRaw) {
-                    throw new Error('Authentication required');
+                    window.location.replace('index.html');
+                    return;
                 }
                 
                 // Step 3: Loading user profile
@@ -192,7 +196,7 @@
                             userAccount = userData.walletAddress || userData.address;
                         }
                     } catch (e) {
-                        console.debug('Parsing user data:', e);
+                        console.debug('Error parsing user data:', e);
                     }
                 }
                 
@@ -200,7 +204,7 @@
                 updateProgress('Configuring workspace...', 60);
                 await sleep(300);
                 
-                // Get user data if not already parsed
+                // Get user data if not already parsed (with cache)
                 if (!userData) {
                     userData = await getUserInfo(userAccount);
                 }
@@ -246,10 +250,15 @@
                 await sleep(300);
                 
                 // Redirect to role-specific dashboard
-                window.location.href = getDashboardUrl(finalRole);
+                window.location.replace(getDashboardUrl(finalRole));
                 
             } catch (error) {
-                console.error('Dashboard initialization error:', error);
+                console.error('Dashboard initialization error:', {
+                    message: error.message,
+                    stack: error.stack,
+                    currentUser: localStorage.getItem('currentUser'),
+                    retryCount
+                });
                 
                 if (retryCount < MAX_RETRIES) {
                     retryCount++;
@@ -263,19 +272,23 @@
         }
         
         async function getUserInfo(userAccount) {
-            let userInfo = null;
+            // Check cache first (performance optimization)
+            if (userCache.has(userAccount)) {
+                return userCache.get(userAccount);
+            }
             
             // Try to get from localStorage
             const savedUser = localStorage.getItem('evidUser_' + userAccount);
-            if (savedUser) {
-                try {
-                    userInfo = JSON.parse(savedUser);
-                } catch (e) {
-                    console.debug('Error parsing user data:', e);
-                }
-            }
+            if (!savedUser) return null;
             
-            return userInfo;
+            try {
+                const parsed = JSON.parse(savedUser);
+                userCache.set(userAccount, parsed); // Cache for future use
+                return parsed;
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                return null;
+            }
         }
         
         function getDashboardUrl(role) {
@@ -344,5 +357,5 @@
         }
     </script>
 </body>
-
+<!--  -->
 </html>
