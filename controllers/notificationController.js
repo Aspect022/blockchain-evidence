@@ -12,6 +12,8 @@ const getNotifications = async (req, res) => {
   try {
     const { wallet } = req.params;
     const { limit = 50, offset = 0, unread_only = false } = req.query;
+    const offsetNum = parseInt(offset, 10) || 0;
+    const limitNum = parseInt(limit, 10) || 50;
 
     if (!validateWalletAddress(wallet)) {
       return res.status(400).json({ error: 'Invalid wallet address' });
@@ -22,7 +24,7 @@ const getNotifications = async (req, res) => {
       .select('*')
       .eq('user_wallet', wallet)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(offsetNum, offsetNum + limitNum - 1);
 
     if (unread_only === 'true') {
       query = query.eq('is_read', false);

@@ -68,10 +68,12 @@ const getEnhancedCases = async (req, res) => {
     if (jurisdiction) query = query.eq('jurisdiction', jurisdiction);
     if (dateFrom) query = query.gte('created_date', dateFrom);
     if (dateTo) query = query.lte('created_date', dateTo);
-    if (search)
+    if (search) {
+      const sanitizedSearch = search.replace(/[%_.*(),'"]/g, '');
       query = query.or(
-        `title.ilike.%${search}%,description.ilike.%${search}%,case_number.ilike.%${search}%`,
+        `title.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%,case_number.ilike.%${sanitizedSearch}%`,
       );
+    }
 
     const offset = (page - 1) * limit;
     query = query
@@ -144,13 +146,11 @@ const createCase = async (req, res) => {
       .single();
     if (error) throw error;
 
-    await supabase
-      .from('activity_logs')
-      .insert({
-        user_id: created_by,
-        action: 'case_created',
-        details: JSON.stringify({ case_id: newCase.id, case_title: title, case_type }),
-      });
+    await supabase.from('activity_logs').insert({
+      user_id: created_by,
+      action: 'case_created',
+      details: JSON.stringify({ case_id: newCase.id, case_title: title, case_type }),
+    });
 
     res.json({ success: true, case: newCase });
   } catch (error) {
@@ -247,13 +247,11 @@ const updateCaseStatus = async (req, res) => {
       .eq('is_active', true)
       .single();
     if (transitionError || !transition)
-      return res
-        .status(403)
-        .json({
-          error: `Status transition not allowed for role: ${user.role}`,
-          currentStatus: currentCase.case_statuses.status_code,
-          requestedStatus: newStatusCode,
-        });
+      return res.status(403).json({
+        error: `Status transition not allowed for role: ${user.role}`,
+        currentStatus: currentCase.case_statuses.status_code,
+        requestedStatus: newStatusCode,
+      });
 
     const { error: updateError } = await supabase
       .from('cases')
@@ -265,35 +263,31 @@ const updateCaseStatus = async (req, res) => {
       .eq('id', id);
     if (updateError) throw updateError;
 
-    await supabase
-      .from('case_status_history')
-      .insert({
-        case_id: id,
-        from_status_id: currentCase.status_id,
-        to_status_id: newStatus.id,
-        changed_by: userWallet,
-        change_reason: reason || 'Status updated via API',
-        metadata: {
-          ...metadata,
-          user_role: user.role,
-          transition_name: transition.transition_name,
-        },
-      });
+    await supabase.from('case_status_history').insert({
+      case_id: id,
+      from_status_id: currentCase.status_id,
+      to_status_id: newStatus.id,
+      changed_by: userWallet,
+      change_reason: reason || 'Status updated via API',
+      metadata: {
+        ...metadata,
+        user_role: user.role,
+        transition_name: transition.transition_name,
+      },
+    });
 
     await createStatusChangeNotification(id, currentCase.status_id, newStatus.id, userWallet);
 
-    await supabase
-      .from('activity_logs')
-      .insert({
-        user_id: userWallet,
-        action: 'case_status_change',
-        details: JSON.stringify({
-          case_id: id,
-          from_status: currentCase.case_statuses.status_code,
-          to_status: newStatusCode,
-          reason,
-        }),
-      });
+    await supabase.from('activity_logs').insert({
+      user_id: userWallet,
+      action: 'case_status_change',
+      details: JSON.stringify({
+        case_id: id,
+        from_status: currentCase.case_statuses.status_code,
+        to_status: newStatusCode,
+        reason,
+      }),
+    });
 
     res.json({
       success: true,
@@ -387,16 +381,14 @@ const assignCase = async (req, res) => {
       .eq('role_type', roleType)
       .eq('assignment_type', assignmentType);
 
-    const { error: assignError } = await supabase
-      .from('case_assignments')
-      .insert({
-        case_id: id,
-        assigned_to: assignToWallet,
-        assigned_by: assignedByWallet,
-        role_type: roleType,
-        assignment_type: assignmentType,
-        notes,
-      });
+    const { error: assignError } = await supabase.from('case_assignments').insert({
+      case_id: id,
+      assigned_to: assignToWallet,
+      assigned_by: assignedByWallet,
+      role_type: roleType,
+      assignment_type: assignmentType,
+      notes,
+    });
     if (assignError) throw assignError;
 
     const updateData = {};
@@ -414,18 +406,16 @@ const assignCase = async (req, res) => {
       { case_id: id, role_type: roleType },
     );
 
-    await supabase
-      .from('activity_logs')
-      .insert({
-        user_id: assignedByWallet,
-        action: 'case_assignment',
-        details: JSON.stringify({
-          case_id: id,
-          assigned_to: assignToWallet,
-          role_type: roleType,
-          assignee_name: assignee.full_name,
-        }),
-      });
+    await supabase.from('activity_logs').insert({
+      user_id: assignedByWallet,
+      action: 'case_assignment',
+      details: JSON.stringify({
+        case_id: id,
+        assigned_to: assignToWallet,
+        role_type: roleType,
+        assignee_name: assignee.full_name,
+      }),
+    });
 
     res.json({ success: true, message: 'Case assigned successfully' });
   } catch (error) {
@@ -523,10 +513,12 @@ const exportCases = async (req, res) => {
     if (jurisdiction) query = query.eq('jurisdiction', jurisdiction);
     if (dateFrom) query = query.gte('created_date', dateFrom);
     if (dateTo) query = query.lte('created_date', dateTo);
-    if (search)
+    if (search) {
+      const sanitizedSearch = search.replace(/[%_.*(),'"]/g, '');
       query = query.or(
-        `title.ilike.%${search}%,description.ilike.%${search}%,case_number.ilike.%${search}%`,
+        `title.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%,case_number.ilike.%${sanitizedSearch}%`,
       );
+    }
 
     const { data: cases, error } = await query.order('created_date', { ascending: false });
     if (error) throw error;
@@ -536,7 +528,7 @@ const exportCases = async (req, res) => {
     const csvRows = cases
       .map(
         (c) =>
-          `"${c.case_number || ''}","${c.title}","${c.case_statuses?.status_name || ''}","${c.priority_level || 3}","${c.case_type || ''}","${c.jurisdiction || ''}","${new Date(c.created_date).toLocaleDateString()}","${c.created_by.substring(0, 8)}..."`,
+          `"${c.case_number || ''}","${c.title}","${c.case_statuses?.status_name || ''}","${c.priority_level || 3}","${c.case_type || ''}","${c.jurisdiction || ''}","${new Date(c.created_date).toLocaleDateString()}","${(c.created_by || '').substring(0, 8)}..."`,
       )
       .join('\n');
 

@@ -117,7 +117,7 @@ const emailRegister = async (req, res) => {
   try {
     const { email, password, fullName, role, department, jurisdiction } = req.body;
 
-    console.log('Email registration request:', { email, fullName, role, department, jurisdiction });
+    console.log('Email registration request:', { role, department, jurisdiction });
 
     if (!email || !password || !fullName || !role) {
       return res.status(400).json({ error: 'Email, password, full name, and role are required' });
@@ -129,6 +129,12 @@ const emailRegister = async (req, res) => {
 
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role selected' });
+    }
+
+    if (role === 'admin') {
+      return res
+        .status(400)
+        .json({ error: 'Admin role cannot be assigned during self-registration.' });
     }
 
     // Check if email already exists
@@ -214,13 +220,7 @@ const walletRegister = async (req, res) => {
   try {
     const { walletAddress, fullName, role, department, jurisdiction, badgeNumber } = req.body;
 
-    console.log('Wallet registration request:', {
-      walletAddress,
-      fullName,
-      role,
-      department,
-      jurisdiction,
-    });
+    console.log('Wallet registration request:', { role, department, jurisdiction });
 
     if (!validateWalletAddress(walletAddress)) {
       return res.status(400).json({ error: 'Invalid wallet address' });
@@ -232,6 +232,12 @@ const walletRegister = async (req, res) => {
 
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role selected' });
+    }
+
+    if (role === 'admin') {
+      return res
+        .status(400)
+        .json({ error: 'Admin role cannot be assigned during self-registration.' });
     }
 
     // Check if wallet already exists

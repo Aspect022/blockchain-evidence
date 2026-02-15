@@ -16,9 +16,9 @@ EVID-DGC implements multiple security layers:
 ### Password Requirements
 
 - Minimum 6 characters (configurable)
-- Stored as SHA-256 hash with salt
+- Stored using bcrypt (via bcryptjs) with salt and configurable work factor
 - No plaintext password storage
-- Password verification via database function
+- Password verification via bcrypt-based comparison
 
 ### MetaMask Integration
 
@@ -74,7 +74,7 @@ All tables have RLS enabled with policies:
 
 ### Data Encryption
 
-- Passwords hashed with SHA-256 + salt
+- Passwords hashed with bcrypt (via bcryptjs) with salt and configurable work factor
 - Sensitive data encrypted at rest (Supabase)
 - HTTPS for all data in transit
 - Database connections encrypted

@@ -1,6 +1,6 @@
 # 🤝 Contributing to EVID-DGC
 
-**To know understand how EVID-DGC works see this Youtube video**
+**To understand how EVID-DGC works see this YouTube video**
 
 YT English --- https://youtu.be/kN0cb3W8CuM
 

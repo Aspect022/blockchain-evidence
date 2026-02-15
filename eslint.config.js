@@ -1,4 +1,5 @@
 const prettier = require('eslint-plugin-prettier');
+const prettierConfig = require('eslint-config-prettier');
 
 module.exports = [
   {
@@ -44,4 +45,6 @@ module.exports = [
       'prettier/prettier': 'warn',
     },
   },
+  // eslint-config-prettier MUST be last to disable conflicting formatting rules
+  prettierConfig,
 ];

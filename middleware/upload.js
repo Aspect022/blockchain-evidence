@@ -33,10 +33,6 @@ const upload = multer({
       cb(new Error(`File type ${file.mimetype} not supported`), false);
     }
   },
-  onError: (err, next) => {
-    console.error('Multer error:', err);
-    next(err);
-  },
 });
 
 module.exports = upload;

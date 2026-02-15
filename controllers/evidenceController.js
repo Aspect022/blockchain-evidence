@@ -309,12 +309,20 @@ const getDownloadHistory = async (req, res) => {
       throw error;
     }
 
-    const formattedHistory = downloadHistory.map((log) => ({
-      timestamp: log.timestamp,
-      user_id: log.user_id,
-      action: log.action,
-      details: JSON.parse(log.details || '{}'),
-    }));
+    const formattedHistory = downloadHistory.map((log) => {
+      let details = {};
+      try {
+        details = JSON.parse(log.details || '{}');
+      } catch (_e) {
+        details = {};
+      }
+      return {
+        timestamp: log.timestamp,
+        user_id: log.user_id,
+        action: log.action,
+        details,
+      };
+    });
 
     res.json({
       success: true,
@@ -331,12 +339,14 @@ const getDownloadHistory = async (req, res) => {
 const getAllEvidence = async (req, res) => {
   try {
     const { limit = 50, offset = 0, case_id, status, submitted_by } = req.query;
+    const limitNum = parseInt(limit, 10) || 50;
+    const offsetNum = parseInt(offset, 10) || 0;
 
     let query = supabase
       .from('evidence')
       .select('*')
       .order('timestamp', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(offsetNum, offsetNum + limitNum - 1);
 
     if (case_id) query = query.eq('case_id', case_id);
     if (status) query = query.eq('status', status);
@@ -458,11 +468,16 @@ const verifyIntegrity = async (req, res) => {
     let blockchainHash = null;
 
     if (evidenceId) {
-      const { data: evidenceData, error } = await supabase
+      const { data: evidenceData, error: errorById } = await supabase
         .from('evidence')
         .select('*')
         .eq('id', evidenceId)
         .single();
+
+      if (errorById && errorById.code !== 'PGRST116') {
+        console.error('Error fetching evidence by ID:', errorById);
+        return res.status(500).json({ error: 'Database error verifying evidence.' });
+      }
 
       if (evidenceData) {
         evidence = evidenceData;
@@ -470,11 +485,16 @@ const verifyIntegrity = async (req, res) => {
         verified = calculatedHash === blockchainHash;
       }
     } else {
-      const { data: evidenceData, error } = await supabase
+      const { data: evidenceData, error: errorByHash } = await supabase
         .from('evidence')
         .select('*')
         .eq('hash', calculatedHash)
         .single();
+
+      if (errorByHash && errorByHash.code !== 'PGRST116') {
+        console.error('Error fetching evidence by hash:', errorByHash);
+        return res.status(500).json({ error: 'Database error verifying evidence.' });
+      }
 
       if (evidenceData) {
         evidence = evidenceData;
@@ -571,7 +591,9 @@ const publicVerify = async (req, res) => {
         title: evidence.title,
         case_id: evidence.case_id,
         timestamp: evidence.timestamp,
-        submitted_by: evidence.submitted_by.substring(0, 8) + '...',
+        submitted_by: evidence.submitted_by
+          ? evidence.submitted_by.substring(0, 8) + '...'
+          : 'unknown',
         hash: evidence.hash,
       },
       verification_timestamp: new Date().toISOString(),
