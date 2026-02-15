@@ -205,8 +205,16 @@
         updateProgress('Redirecting...', 100);
         window.location.replace(dashboardUrl);
 
-    } catch {
-        showError('Failed to load dashboard. Please try again.');
+    } catch (error) {
+        // error logging
+        console.error('Dashboard error:', {
+            message: error.message,
+            stack: error.stack,
+            currentUser: localStorage.getItem('currentUser'),
+            retryCount
+        });
+        showError(`Failed: ${error.message || 'Unable to load dashboard'}`);
+
     }
 }
 
@@ -524,5 +532,5 @@ async function getUserInfo(userAccount) {
         document.head.appendChild(style);
     </script>
 </body>
-
+<!--  -->
 </html>
