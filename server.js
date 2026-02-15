@@ -16,12 +16,15 @@ const { setIO: setNotificationControllerIO } = require('./controllers/notificati
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: process.env.NODE_ENV === 'production'
-            ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://blockchain-evidence.onrender.com']).map(url => url.trim())
-            : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-        methods: ['GET', 'POST']
-    }
+  cors: {
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? (
+            process.env.ALLOWED_ORIGINS?.split(',') || ['https://blockchain-evidence.onrender.com']
+          ).map((url) => url.trim())
+        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    methods: ['GET', 'POST'],
+  },
 });
 
 // Inject the io instance into services that need it
@@ -30,36 +33,41 @@ setNotificationControllerIO(io);
 
 // ── WebSocket connection handling ───────────────────────────────────────────
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+  console.log('User connected:', socket.id);
 
-    socket.on('join', (walletAddress) => {
-        if (validateWalletAddress(walletAddress)) {
-            connectedUsers.set(walletAddress, socket.id);
-            socket.join(walletAddress);
-            console.log(`User ${walletAddress} joined notifications`);
-        }
-    });
+  socket.on('join', (walletAddress) => {
+    if (validateWalletAddress(walletAddress)) {
+      connectedUsers.set(walletAddress, socket.id);
+      socket.join(walletAddress);
+      console.log(`User ${walletAddress} joined notifications`);
+    }
+  });
 
-    socket.on('disconnect', () => {
-        for (const [wallet, socketId] of connectedUsers.entries()) {
-            if (socketId === socket.id) {
-                connectedUsers.delete(wallet);
-                break;
-            }
-        }
-        console.log('User disconnected:', socket.id);
-    });
+  socket.on('disconnect', () => {
+    for (const [wallet, socketId] of connectedUsers.entries()) {
+      if (socketId === socket.id) {
+        connectedUsers.delete(wallet);
+        break;
+      }
+    }
+    console.log('User disconnected:', socket.id);
+  });
 });
 
 // ── Middleware (ORDER IS CRITICAL!) ─────────────────────────────────────────
 
 // 1. CORS MUST BE FIRST
-app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
-        ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://blockchain-evidence.onrender.com']).map(url => url.trim())
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? (
+            process.env.ALLOWED_ORIGINS?.split(',') || ['https://blockchain-evidence.onrender.com']
+          ).map((url) => url.trim())
         : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-    credentials: true
-}));
+    credentials: true,
+  }),
+);
 
 // 2. JSON / BODY PARSER
 app.use(express.json({ limit: '50mb' }));
@@ -77,20 +85,20 @@ registerRoutes(app);
 
 // ── Error handling ──────────────────────────────────────────────────────────
 app.use((error, req, res, next) => {
-    console.error('Unhandled error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  console.error('Unhandled error:', error);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Endpoint not found' });
+  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // ── Start server ────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
-    console.log(`🔐 EVID-DGC API Server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🔔 WebSocket notifications enabled`);
+  console.log(`🔐 EVID-DGC API Server running on port ${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔔 WebSocket notifications enabled`);
 });
 
 module.exports = app;
