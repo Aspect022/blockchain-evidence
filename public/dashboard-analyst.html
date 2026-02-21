@@ -291,7 +291,45 @@
                 </div>
             </div>
         </div>
+
+        <!-- Evidence Inventory -->
+        <section style="background: white; border-radius: 8px; padding: 24px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2>📁 Evidence Inventory</h2>
+            <div id="analystEvidenceList">
+                <div style="text-align: center; padding: 40px;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 16px; color: #64748b;">Loading evidence...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Active Cases -->
+        <section style="background: white; border-radius: 8px; padding: 24px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2>📋 Active Cases</h2>
+            <div id="analystCaseList">
+                <div style="text-align: center; padding: 40px;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 16px; color: #64748b;">Loading cases...</p>
+                </div>
+            </div>
+        </section>
     </div>
+
+    <style>
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 
     <script>
         let currentUser = null;
@@ -417,6 +455,7 @@
             }
         }
     </script>
+    <script src="dashboard-analyst-evidence.js"></script>
     <script src="footer.js"></script>
 </body>
 
