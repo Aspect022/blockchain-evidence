@@ -85,8 +85,8 @@ const emailLogin = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Block unverified email accounts
-    if (user.email_verified === false) {
+    // Block unverified email accounts (catches false, null, and undefined for legacy rows)
+    if (user.email_verified !== true) {
       return res.status(401).json({ error: 'Please verify your email before logging in' });
     }
 
@@ -128,8 +128,9 @@ const emailRegister = async (req, res) => {
       return res.status(400).json({ error: 'Email, password, full name, and role are required' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    // TODO: integrate breached-password check (e.g., HaveIBeenPwned API / zxcvbn scoring)
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
 
     if (role === 'admin') {
@@ -143,11 +144,16 @@ const emailRegister = async (req, res) => {
     }
 
     // Check if email already exists
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: lookupError } = await supabase
       .from('users')
       .select('email')
       .eq('email', email.toLowerCase())
       .single();
+
+    if (lookupError && lookupError.code !== 'PGRST116') {
+      console.error('Email lookup error:', lookupError);
+      return res.status(500).json({ error: 'Unable to verify email availability' });
+    }
 
     if (existingUser) {
       return res.status(409).json({ error: 'Email address already registered' });
@@ -207,7 +213,7 @@ const emailRegister = async (req, res) => {
       timestamp: new Date().toISOString(),
     });
 
-    res.json({
+    res.status(201).json({
       success: true,
       message: 'Registration successful — please verify your email before logging in.',
       email_verification_required: true,
@@ -265,11 +271,16 @@ const walletRegister = async (req, res) => {
     }
 
     // Check if wallet already exists
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: lookupError } = await supabase
       .from('users')
       .select('wallet_address')
       .eq('wallet_address', walletAddress.toLowerCase())
       .single();
+
+    if (lookupError && lookupError.code !== 'PGRST116') {
+      console.error('Wallet lookup error:', lookupError);
+      return res.status(500).json({ error: 'Unable to verify wallet availability' });
+    }
 
     if (existingUser) {
       return res.status(409).json({ error: 'Wallet address already registered' });
@@ -312,7 +323,7 @@ const walletRegister = async (req, res) => {
       timestamp: new Date().toISOString(),
     });
 
-    res.json({
+    res.status(201).json({
       success: true,
       message: 'Registration successful',
       user: {
@@ -341,10 +352,10 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ error: 'Verification token is required' });
     }
 
-    // Get user by token
+    // Get user by token (only fetch needed fields to avoid exposing password_hash)
     const { data: user, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email_verified, verification_token_expires')
       .eq('verification_token', token)
       .single();
 
@@ -377,7 +388,7 @@ const verifyEmail = async (req, res) => {
       await supabase.from('activity_logs').insert({
         user_id: user.id,
         action: 'email_verified',
-        details: JSON.stringify({ email: user.email }),
+        details: JSON.stringify({ user_id: user.id, verified: true }),
         timestamp: new Date().toISOString(),
       });
     } catch (logError) {

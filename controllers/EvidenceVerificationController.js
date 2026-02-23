@@ -3,13 +3,36 @@ const { validateWalletAddress } = require('../middleware/verifyAdmin');
 const integratedEvidenceService = require('../services/integratedEvidenceService');
 const blockchainService = require('../services/blockchain/blockchainService');
 
+// Shared helper: validate wallet + verify user is active admin or auditor
+// Returns { user } on success, or sends 400/403 response and returns null
+const authorizeAdminOrAuditor = async (wallet, res) => {
+  if (!validateWalletAddress(wallet)) {
+    res.status(400).json({ error: 'Invalid wallet address' });
+    return null;
+  }
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('wallet_address', wallet)
+    .eq('is_active', true)
+    .single();
+
+  if (userError || !user || !['admin', 'auditor'].includes(user.role)) {
+    res.status(403).json({ error: 'Unauthorized: Admin or Auditor role required' });
+    return null;
+  }
+
+  return user;
+};
+
 // Verify evidence hash against blockchain
 const verifyEvidenceHash = async (req, res) => {
   try {
     const { id } = req.params;
     const { data: evidence, error } = await supabase
       .from('evidence')
-      .select('*')
+      .select('id, blockchain_tx_hash')
       .eq('id', id)
       .single();
 
@@ -41,7 +64,7 @@ const getBlockchainProof = async (req, res) => {
     const { id } = req.params;
     const { data: evidence, error } = await supabase
       .from('evidence')
-      .select('*')
+      .select('id, timestamp, blockchain_tx_hash')
       .eq('id', id)
       .single();
 
@@ -70,7 +93,7 @@ const getBlockchainProof = async (req, res) => {
               : typeof proof.integrity === 'string'
                 ? proof.integrity
                 : 'unknown',
-          verified_at: proof.verificationTimestamp || proof.verified_at || new Date().toISOString(),
+          verified_at: proof.verificationTimestamp || proof.verified_at || null,
         },
       },
     });
@@ -164,7 +187,7 @@ const verifyIntegrity = async (req, res) => {
       calculatedHash,
       blockchainHash,
       evidence: safeEvidence,
-      verificationUrl: `${req.protocol}://${req.get('host')}/verify/${calculatedHash}`,
+      verificationUrl: `${req.protocol}://${req.get('host')}/verify/${encodeURIComponent(calculatedHash)}`,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -204,7 +227,7 @@ EVIDENCE VERIFICATION CERTIFICATE
 Certificate ID: ${certificateData.certificateId}
 File Name: ${sanitizedFileName}
 Verification Result: ${verificationResult.toUpperCase()}
-Verification Date: ${validTimestamp.toLocaleString()}
+Verification Date: ${validTimestamp.toISOString()}
 Issued By: ${certificateData.issuer}
 
 This certificate confirms the integrity verification of the above evidence file.
@@ -263,20 +286,8 @@ const getVerificationHistory = async (req, res) => {
   try {
     const { userWallet, limit = 100 } = req.query;
 
-    if (!validateWalletAddress(userWallet)) {
-      return res.status(400).json({ error: 'Invalid wallet address' });
-    }
-
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('wallet_address', userWallet)
-      .eq('is_active', true)
-      .single();
-
-    if (userError || !user || !['admin', 'auditor'].includes(user.role)) {
-      return res.status(403).json({ error: 'Unauthorized: Admin or Auditor role required' });
-    }
+    const user = await authorizeAdminOrAuditor(userWallet, res);
+    if (!user) return;
 
     const parsedLimit = Number(limit);
     const sanitizedLimit =
@@ -301,7 +312,11 @@ const getVerificationHistory = async (req, res) => {
 // Get multiple evidence items for comparison
 const compareEvidence = async (req, res) => {
   try {
-    const { ids } = req.query;
+    const { ids, userWallet } = req.query;
+
+    // Require admin/auditor authorization
+    const user = await authorizeAdminOrAuditor(userWallet, res);
+    if (!user) return;
 
     if (!ids) {
       return res.status(400).json({ error: 'Evidence IDs are required' });
@@ -325,7 +340,7 @@ const compareEvidence = async (req, res) => {
 
     const { data: evidenceItems, error } = await supabase
       .from('evidence')
-      .select('*')
+      .select('id, title, case_id, type, timestamp, hash, blockchain_tx_hash, ipfs_cid')
       .in('id', evidenceIds);
 
     if (error) throw error;
@@ -356,27 +371,24 @@ const createComparisonReport = async (req, res) => {
   try {
     const { evidenceIds, reportData, generatedBy } = req.body;
 
-    if (!validateWalletAddress(generatedBy)) {
-      return res.status(400).json({ error: 'Invalid wallet address' });
-    }
-
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('wallet_address', generatedBy)
-      .eq('is_active', true)
-      .single();
-
-    if (userError || !user || !['admin', 'auditor'].includes(user.role)) {
-      return res.status(403).json({ error: 'Unauthorized: Admin or Auditor role required' });
-    }
+    const user = await authorizeAdminOrAuditor(generatedBy, res);
+    if (!user) return;
 
     if (!evidenceIds || !Array.isArray(evidenceIds) || evidenceIds.length < 2) {
       return res.status(400).json({ error: 'At least 2 evidence IDs required' });
     }
 
+    // Sanitize and validate each evidence ID
+    const sanitizedIds = evidenceIds
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (sanitizedIds.length < 2) {
+      return res.status(400).json({ error: 'At least 2 valid numeric evidence IDs required' });
+    }
+
     const reportRecord = {
-      evidence_ids: evidenceIds,
+      evidence_ids: sanitizedIds,
       report_data: reportData,
       generated_by: generatedBy,
       generated_at: new Date().toISOString(),
@@ -395,12 +407,17 @@ const createComparisonReport = async (req, res) => {
       return res.status(500).json({ error: 'Failed to save comparison report' });
     }
 
-    await supabase.from('activity_logs').insert({
-      user_id: generatedBy,
-      action: 'evidence_comparison_report_generated',
-      details: `Generated comparison report for ${evidenceIds.length} evidence items`,
-      timestamp: new Date().toISOString(),
-    });
+    // Audit log isolated so failure doesn't mask report success
+    try {
+      await supabase.from('activity_logs').insert({
+        user_id: generatedBy,
+        action: 'evidence_comparison_report_generated',
+        details: `Generated comparison report for ${sanitizedIds.length} evidence items`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (logError) {
+      console.error('Failed to log comparison report activity:', logError);
+    }
 
     res.json({
       success: true,

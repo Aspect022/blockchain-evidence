@@ -75,6 +75,21 @@ const getEvidenceExpiry = async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized access: Invalid wallet address' });
     }
 
+    // Verify user exists, is active, and has an authorized role
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, role, is_active')
+      .eq('wallet_address', wallet.toLowerCase())
+      .single();
+
+    if (userError || !user || !user.is_active) {
+      return res.status(403).json({ error: 'Unauthorized access' });
+    }
+
+    if (!['admin', 'investigator', 'evidence_manager', 'auditor'].includes(user.role)) {
+      return res.status(403).json({ error: 'Unauthorized: Insufficient role' });
+    }
+
     let query = supabase.from('evidence').select('*');
 
     const now = new Date();
@@ -186,6 +201,21 @@ const bulkRetentionPolicy = async (req, res) => {
       return res.status(400).json({ error: 'Invalid wallet address' });
     }
 
+    // Verify user exists, is active, and has an authorized role
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, role, is_active')
+      .eq('wallet_address', userWallet.toLowerCase())
+      .single();
+
+    if (userError || !user || !user.is_active) {
+      return res.status(403).json({ error: 'User not found or inactive' });
+    }
+
+    if (!['admin', 'investigator', 'evidence_manager'].includes(user.role)) {
+      return res.status(403).json({ error: 'Unauthorized: Insufficient role for bulk operations' });
+    }
+
     if (!evidenceIds || !Array.isArray(evidenceIds) || evidenceIds.length === 0) {
       return res.status(400).json({ error: 'Invalid or empty evidenceIds' });
     }
@@ -217,6 +247,22 @@ const bulkRetentionPolicy = async (req, res) => {
 
     if (error) throw error;
 
+    // Audit log isolated so failure doesn't affect bulk update response
+    try {
+      await supabase.from('activity_logs').insert({
+        user_id: userWallet,
+        action: 'bulk_retention_policy_applied',
+        details: JSON.stringify({
+          policy_id: policyId,
+          evidence_ids: evidenceIds,
+          affected_count: count || 0,
+        }),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (logError) {
+      console.error('Failed to log bulk retention policy action:', logError);
+    }
+
     res.json({ success: true, updated: count || 0 });
   } catch (error) {
     console.error('Bulk retention policy error:', error);
@@ -231,6 +277,21 @@ const checkExpiry = async (req, res) => {
 
     if (!validateWalletAddress(wallet)) {
       return res.status(403).json({ error: 'Unauthorized access: Invalid wallet address' });
+    }
+
+    // Verify user exists, is active, and has an authorized role
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, role, is_active')
+      .eq('wallet_address', wallet.toLowerCase())
+      .single();
+
+    if (userError || !user || !user.is_active) {
+      return res.status(403).json({ error: 'Unauthorized access' });
+    }
+
+    if (!['admin', 'investigator', 'evidence_manager', 'auditor'].includes(user.role)) {
+      return res.status(403).json({ error: 'Unauthorized: Insufficient role' });
     }
 
     const now = new Date();
@@ -262,7 +323,7 @@ const checkExpiry = async (req, res) => {
       );
 
       const results = await Promise.allSettled(notificationPromises);
-      notificationsSent = results.filter((r) => r.status === 'fulfilled').length;
+      notificationsSent = results.filter((r) => r.status === 'fulfilled' && r.value != null).length;
     }
 
     res.json({ success: true, notifications_sent: notificationsSent });
