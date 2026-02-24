@@ -71,7 +71,9 @@ const verifySignature = (req, res, next) => {
       return res.status(401).json({ error: 'Signature timestamp is expired or invalid.' });
     }
 
-    if (usedNonces.has(nonce)) {
+    const nonceKey = `${claimedWallet.toLowerCase()}:${nonce}`;
+
+    if (usedNonces.has(nonceKey)) {
       return res.status(401).json({ error: 'Signature replay detected. Nonce already used.' });
     }
 
@@ -97,7 +99,7 @@ const verifySignature = (req, res, next) => {
     }
 
     // Mark nonce as used
-    usedNonces.set(nonce, messageTime + MAX_AGE);
+    usedNonces.set(nonceKey, messageTime + MAX_AGE);
 
     req.authenticatedWallet = recoveredAddress.toLowerCase();
     next();
