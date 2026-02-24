@@ -72,6 +72,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 4. General rate limiter
 app.use('/api/', limiter);
 
+// 5. Cryptographic signature verification for wallet authentication
+const { verifySignature } = require('./middleware/verifySignature');
+app.use('/api/', verifySignature);
+
 // ── Routes ──────────────────────────────────────────────────────────────────
 const registerRoutes = require('./routes');
 registerRoutes(app);
